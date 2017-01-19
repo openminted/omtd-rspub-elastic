@@ -1,26 +1,24 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
+import optparse
 import time
 
-import optparse
 import yaml
 from rspub.core.rs_enum import Strategy
 
 from resyncserver.elastic.elastic_rs import ElasticResourceSync
-from resyncserver.server_rs_paras import ServerRsParameters
+from resyncserver.elastic.elastic_rs_paras import ElasticRsParameters
 
 RESOURCE_TYPE = "resource"
 
 
 class ElasticGenerator(object):
 
-    def __init__(self, config, index, doc_type):
+    def __init__(self, config):
         self.config = config
-        self.index = index
-        self.doc_type = doc_type
 
     def generate(self):
-        rs = ElasticResourceSync(self.index, self.doc_type, **self.config.__dict__)
+        rs = ElasticResourceSync(**self.config.__dict__)
         rs.execute()
         return 0
 
@@ -48,11 +46,11 @@ def main():
         parser.print_help()
         return
 
-    config = yaml.load(open(args.config_file, 'r'))['source']
-    rs_params = ServerRsParameters(**config)
+    config = yaml.load(open(args.config_file, 'r'))['executor']
+    rs_params = ElasticRsParameters(**config)
     start = time.clock()
 
-    gener = ElasticGenerator(rs_params, config['elastic_index'], RESOURCE_TYPE)
+    gener = ElasticGenerator(rs_params)
     gener.generate_resourcelist()
 
     elapsed_time = time.clock() - start

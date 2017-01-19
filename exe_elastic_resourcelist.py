@@ -7,14 +7,14 @@ from rspub.core.executors import Executor, SitemapData, ExecutorEvent
 from rspub.core.rs_enum import Capability
 from rspub.util import defaults
 
+from resyncserver.elastic.elastic_rs_paras import ElasticRsParameters
+
 MAX_RESULT_WINDOW = 10000
 
 
 class ElasticResourceListExecutor(Executor):
-    def __init__(self, rs_parameters, index, doc_type):
+    def __init__(self, rs_parameters):
         super(ElasticResourceListExecutor, self).__init__(rs_parameters)
-        self.index = index
-        self.doc_type = doc_type
 
     """
         :samp:`Executes the new resourcelist strategy`
@@ -136,22 +136,20 @@ class ElasticResourceListExecutor(Executor):
                 for e_hit in e_page:
                     e_source = e_hit['_source']
                     e_doc = ElasticResourceDoc(e_hit['_id'], e_source['filename'], e_source['size'], e_source['md5'],
-                                               e_source['mime'], e_source['date'])
+                                               e_source['mime'], e_source['time'], e_source['publisher'])
                     filename = e_doc.filename
                     file = os.path.abspath(filename)
-                    if passes_gate(file):
-                        count += 1
-                        path = os.path.relpath(file, self.para.resource_dir)
-                        uri = self.para.url_prefix + defaults.sanitize_url_path(path)
-                        resource = Resource(uri=uri, length=e_doc.size,
-                                            lastmod=e_doc.time,
-                                            md5=e_doc.md5,
-                                            mime_type=e_doc.mime)
-                        yield count, resource
-                        self.observers_inform(self, ExecutorEvent.created_resource, resource=resource,
-                                              count=count, file=file)
-                    else:
-                        self.observers_inform(self, ExecutorEvent.rejected_file, file=file)
+                    count += 1
+                    path = os.path.relpath(file, self.para.resource_dir)
+                    uri = self.para.url_prefix + defaults.sanitize_url_path(path)
+                    resource = Resource(uri=uri, length=e_doc.size,
+                                        lastmod=e_doc.time,
+                                        md5=e_doc.md5,
+                                        mime_type=e_doc.mime)
+                    yield count, resource
+                    self.observers_inform(self, ExecutorEvent.created_resource, resource=resource,
+                                          count=count, file=file)
+
                         # else:
                         #   LOG.warning("Not a regular file: %s" % file)
 
@@ -166,19 +164,21 @@ class ElasticResourceListExecutor(Executor):
             n_iter = 1
             # index.max_result_window in Elasticsearch controls the max number of results returned from a query.
             # we can either increase it to 50k in order to match the sitemaps pagination requirements or not
-            # in the latter case, we have to bulk the number of items that we want to put into each list
+            # in the latter case, we have to bulk the number of items that we want to put into each resourcelist chunk
             if self.para.max_items_in_list > MAX_RESULT_WINDOW:
                 n = self.para.max_items_in_list / MAX_RESULT_WINDOW
                 n_iter = int(n)
                 result_size = MAX_RESULT_WINDOW
 
-            page = es.search(index=self.index, doc_type=self.doc_type, scroll='2m', size=result_size,
-                             body={"query": {"match_all": {}}})
+            page = es.search(index=self.para.elastic_index, doc_type=self.para.elastic_resource_type, scroll='2m', size=result_size,
+                             body={"query": {"term": {"publisher": self.para.publisher_name}}})
             sid = page['_scroll_id']
-            total_size = page['hits']['total']
+            # total_size = page['hits']['total']
             scroll_size = len(page['hits']['hits'])
             bulk = page['hits']['hits']
             c_iter += 1
+            # if c_iter and n_iter control the number of iteration we need to perform in order to yield a bulk of
+            #  (at most) self.para.max_items_in_list
             if c_iter >= n_iter or scroll_size < result_size:
                 c_iter = 0
                 yield bulk
@@ -200,13 +200,14 @@ class ElasticResourceListExecutor(Executor):
 
 
 class ElasticResourceDoc(object):
-    def __init__(self, elastic_id, filename, size, md5, mime, time):
+    def __init__(self, elastic_id, filename, size, md5, mime, time, publisher):
         self._elastic_id = elastic_id
         self._filename = filename
         self._size = size
         self._md5 = md5
         self._mime = mime
         self._time = time
+        self._publisher = publisher
 
     @property
     def elastic_id(self):
@@ -231,3 +232,7 @@ class ElasticResourceDoc(object):
     @property
     def time(self):
         return self._time
+
+    @property
+    def publisher(self):
+        return self._publisher

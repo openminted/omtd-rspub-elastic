@@ -4,18 +4,16 @@ from rspub.core.rs import ResourceSync
 from rspub.core.rs_enum import Strategy
 from rspub.util.observe import Observable
 
+from resyncserver.elastic.elastic_rs_paras import ElasticRsParameters
 from resyncserver.elastic.exe_elastic_resourcelist import ElasticResourceListExecutor
-from resyncserver.server_rs_paras import ServerRsParameters
 
 
-class ElasticResourceSync(ResourceSync, ServerRsParameters):
+class ElasticResourceSync(ResourceSync, ElasticRsParameters):
 
-    def __init__(self, index, doc_type, **kwargs):
+    def __init__(self, **kwargs):
         # super(ElasticResourceSync, self).__init__(**kwargs)
         Observable.__init__(self)
-        ServerRsParameters.__init__(self, **kwargs)
-        self.index = index
-        self.doc_type = doc_type
+        ElasticRsParameters.__init__(self, **kwargs)
 
     def execute(self, filenames: iter=None, start_new=False):
         """
@@ -36,11 +34,11 @@ class ElasticResourceSync(ResourceSync, ServerRsParameters):
         resourcelist_files = sorted(glob(self.abs_metadata_path("resourcelist_*.xml")))
         start_new = start_new or len(resourcelist_files) == 0
 
-        paras = ServerRsParameters(**self.__dict__)
+        paras = ElasticRsParameters(**self.__dict__)
         executor = None
 
         if self.strategy == Strategy.resourcelist or start_new:
-            executor = ElasticResourceListExecutor(paras, index=self.index, doc_type=self.doc_type)
+            executor = ElasticResourceListExecutor(paras)
         elif self.strategy == Strategy.new_changelist:
             # todo
             # executor = ElasticNewChangeListExecutor(paras, index=self.index, doc_type=self.doc_type)
