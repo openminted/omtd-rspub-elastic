@@ -1,17 +1,15 @@
 import optparse
 import os
+from concurrent.futures import ThreadPoolExecutor
 from os.path import basename
 
 import yaml
 from elasticsearch import Elasticsearch
 from rspub.util import defaults
 
-INDEX = "resourcesync"
-RESOURCE_TYPE = "resource"
 
-
-def create_index(index, resource_type):
-    es = Elasticsearch()
+def create_index(host, port, index, resource_type):
+    es = Elasticsearch([{"host": host, "port": port}])
     mapping = {
                 "mappings": {
                     resource_type: {
@@ -39,6 +37,10 @@ def create_index(index, resource_type):
                         "publisher": {
                             "type": "string",
                             "index": "not_analyzed"
+                        },
+                        "res_type": {
+                            "type": "string",
+                            "index": "not_analyzed"
                         }
                       }
                     }
@@ -47,7 +49,7 @@ def create_index(index, resource_type):
     es.indices.create(index=index, body=mapping, ignore=400)
 
 
-def put_into_elasticsearch(index: str, resource_type: str, pub_name, file):
+def put_into_elasticsearch(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, file):
     stat = os.stat(file)
     doc = {
             "filename": file,
@@ -56,24 +58,26 @@ def put_into_elasticsearch(index: str, resource_type: str, pub_name, file):
             "mime": defaults.mime_type(file),
             "time": defaults.w3c_datetime(stat.st_ctime),
             "publisher": pub_name,
+            "res_type": res_type
          }
 
-    es = Elasticsearch()
-    es.index(index=index, doc_type=resource_type, body=doc)
+    es = Elasticsearch([{"host": elastic_host, "port": elastic_port}])
+    es.index(index=elastic_index, doc_type=elastic_resource_type, body=doc)
 
 
-def traverse(pub_name, pub_folder):
+def traverse_folder(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, pub_folder):
     cur_folder = pub_folder
     files_names = os.listdir(cur_folder)
     for f in files_names:
         f_path = os.path.join(cur_folder, f)
         if os.path.isdir(f_path):
-            traverse(f_path)
+            traverse_folder(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, f_path)
         else:
             if not basename(f_path).startswith('.'):
                 # todo: substitute with es bulk API
-                put_into_elasticsearch(INDEX, RESOURCE_TYPE, pub_name, os.path.join(pub_folder, f_path))
+                put_into_elasticsearch(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, os.path.join(pub_folder, f_path))
                 print(f_path)
+
 
 def main():
     parser = optparse.OptionParser()
@@ -93,11 +97,18 @@ def main():
     config = yaml.load(open(args.config_file, 'r'))['populator']
     publishers = config['publishers']
     subfolders = config['subfolders']
+    elastic_host = config['elastic_host']
+    elastic_port = config['elastic_port']
+    elastic_index = config['elastic_index']
+    elastic_resource_type = config['elastic_resource_type']
 
-    create_index(INDEX, RESOURCE_TYPE)
+    executor = ThreadPoolExecutor(max_workers=len(publishers) + len(subfolders))
+
+    create_index(elastic_host, elastic_port, elastic_index, elastic_resource_type)
     for publisher in publishers:
         for subfolder in subfolders:
-            traverse(publisher["name"], os.path.join(publisher["resources"], subfolder))
+            executor.submit(traverse_folder, elastic_host, elastic_port, elastic_index, elastic_resource_type, publisher["name"], subfolder, os.path.join(publisher["resources"], subfolder))
+
 
 if __name__ == '__main__':
     main()

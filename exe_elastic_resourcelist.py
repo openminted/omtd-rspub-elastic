@@ -7,7 +7,6 @@ from rspub.core.executors import Executor, SitemapData, ExecutorEvent
 from rspub.core.rs_enum import Capability
 from rspub.util import defaults
 
-from resyncserver.elastic.elastic_rs_paras import ElasticRsParameters
 
 MAX_RESULT_WINDOW = 10000
 
@@ -130,13 +129,12 @@ class ElasticResourceListExecutor(Executor):
     def resource_generator(self) -> iter:
 
         def generator(count=0) -> [int, Resource]:
-            passes_gate = self.resource_gate()
             elastic_page_generator = self.elastic_page_generator()
             for e_page in elastic_page_generator():
                 for e_hit in e_page:
                     e_source = e_hit['_source']
                     e_doc = ElasticResourceDoc(e_hit['_id'], e_source['filename'], e_source['size'], e_source['md5'],
-                                               e_source['mime'], e_source['time'], e_source['publisher'])
+                                               e_source['mime'], e_source['time'], e_source['publisher'], e_source['res_type'])
                     filename = e_doc.filename
                     file = os.path.abspath(filename)
                     count += 1
@@ -150,15 +148,12 @@ class ElasticResourceListExecutor(Executor):
                     self.observers_inform(self, ExecutorEvent.created_resource, resource=resource,
                                           count=count, file=file)
 
-                        # else:
-                        #   LOG.warning("Not a regular file: %s" % file)
-
         return generator
 
     def elastic_page_generator(self) -> iter:
 
         def generator() -> iter:
-            es = Elasticsearch()
+            es = Elasticsearch([{"host": self.para.elastic_host, "port": self.para.elastic_port}])
             result_size = self.para.max_items_in_list
             c_iter = 0
             n_iter = 1
@@ -170,8 +165,22 @@ class ElasticResourceListExecutor(Executor):
                 n_iter = int(n)
                 result_size = MAX_RESULT_WINDOW
 
+            query = {"query":
+                        {"bool":
+                            {"must":[
+                                 {"term":
+                                      {"publisher": self.para.publisher_name}
+                                  },
+
+                                 {"term":
+                                      {"res_type": self.para.res_type}
+                                  }]
+                             }
+                        }
+                    }
+
             page = es.search(index=self.para.elastic_index, doc_type=self.para.elastic_resource_type, scroll='2m', size=result_size,
-                             body={"query": {"term": {"publisher": self.para.publisher_name}}})
+                             body=query)
             sid = page['_scroll_id']
             # total_size = page['hits']['total']
             scroll_size = len(page['hits']['hits'])
@@ -200,7 +209,7 @@ class ElasticResourceListExecutor(Executor):
 
 
 class ElasticResourceDoc(object):
-    def __init__(self, elastic_id, filename, size, md5, mime, time, publisher):
+    def __init__(self, elastic_id, filename, size, md5, mime, time, publisher, res_type):
         self._elastic_id = elastic_id
         self._filename = filename
         self._size = size
@@ -208,6 +217,7 @@ class ElasticResourceDoc(object):
         self._mime = mime
         self._time = time
         self._publisher = publisher
+        self._res_type = res_type
 
     @property
     def elastic_id(self):
@@ -236,3 +246,7 @@ class ElasticResourceDoc(object):
     @property
     def publisher(self):
         return self._publisher
+
+    @property
+    def res_type(self):
+        return self._res_type

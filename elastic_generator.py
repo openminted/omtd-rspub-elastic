@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 import optparse
+import os
 import time
 
 import yaml
@@ -47,6 +48,10 @@ def main():
         return
 
     config = yaml.load(open(args.config_file, 'r'))['executor']
+
+    if not os.path.exists(config['description_dir']):
+        os.makedirs(config['description_dir'])
+
     rs_params = ElasticRsParameters(**config)
     start = time.clock()
 
