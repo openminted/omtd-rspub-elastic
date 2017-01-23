@@ -113,13 +113,13 @@ class ElasticResourceListExecutor(Executor):
                 ordinal += 1
                 doc_end = defaults.w3c_now()
                 resourcelist.md_completed = doc_end
-                if ordinal == 0:
+                #if ordinal == 0:
                     # if we have a single doc, set ordinal to -1 so that the finish_sitemap will not append the
                     # ordinal to the filename
-                    ordinal = -1
-                    print("Generating resourcelist")
-                else:
-                    print("Generating resourcelist #:" + str(ordinal))
+                    #ordinal = -1
+                    #print("Generating resourcelist")
+                #else:
+                print("Generating resourcelist #:" + str(ordinal))
                 sitemap_data = self.finish_sitemap(ordinal, resourcelist, doc_start=doc_start, doc_end=doc_end)
                 print("Finish")
                 yield sitemap_data, resourcelist

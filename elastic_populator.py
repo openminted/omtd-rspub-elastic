@@ -3,10 +3,12 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from os.path import basename
 
+import multiprocessing
 import yaml
 from elasticsearch import Elasticsearch
 from rspub.util import defaults
 
+limit = -1
 
 def create_index(host, port, index, resource_type):
     es = Elasticsearch([{"host": host, "port": port}])
@@ -66,17 +68,25 @@ def put_into_elasticsearch(elastic_host, elastic_port, elastic_index, elastic_re
 
 
 def traverse_folder(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, pub_folder):
+    global limit
+    count = 0
     cur_folder = pub_folder
     files_names = os.listdir(cur_folder)
     for f in files_names:
-        f_path = os.path.join(cur_folder, f)
-        if os.path.isdir(f_path):
-            traverse_folder(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, f_path)
+        if limit < 0 or (limit > 0 and count < limit):
+            f_path = os.path.join(cur_folder, f)
+            if os.path.isdir(f_path):
+                traverse_folder(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, f_path)
+            else:
+                if not basename(f_path).startswith('.'):
+                    # todo: substitute with es bulk API
+                    put_into_elasticsearch(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, os.path.join(pub_folder, f_path))
+                    print(f_path)
+                    count += 1
         else:
-            if not basename(f_path).startswith('.'):
-                # todo: substitute with es bulk API
-                put_into_elasticsearch(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, os.path.join(pub_folder, f_path))
-                print(f_path)
+            break
+
+
 
 
 def main():
@@ -96,18 +106,25 @@ def main():
 
     config = yaml.load(open(args.config_file, 'r'))['populator']
     publishers = config['publishers']
-    subfolders = config['subfolders']
     elastic_host = config['elastic_host']
     elastic_port = config['elastic_port']
     elastic_index = config['elastic_index']
     elastic_resource_type = config['elastic_resource_type']
+    global limit
+    if 'limit' in config:
+        limit = config['limit']
 
-    executor = ThreadPoolExecutor(max_workers=len(publishers) + len(subfolders))
+    executor = ThreadPoolExecutor(max_workers=multiprocessing.cpu_count())
 
     create_index(elastic_host, elastic_port, elastic_index, elastic_resource_type)
     for publisher in publishers:
+        subfolders = publisher['subfolders']
         for subfolder in subfolders:
-            executor.submit(traverse_folder, elastic_host, elastic_port, elastic_index, elastic_resource_type, publisher["name"], subfolder, os.path.join(publisher["resources"], subfolder))
+            if 'type' in publisher:
+                folder_type = publisher['type']
+            else:
+                folder_type = subfolder
+            executor.submit(traverse_folder, elastic_host, elastic_port, elastic_index, elastic_resource_type, publisher["name"], folder_type, os.path.join(publisher["resources"], subfolder))
 
 
 if __name__ == '__main__':
