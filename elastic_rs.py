@@ -16,20 +16,7 @@ class ElasticResourceSync(ResourceSync, ElasticRsParameters):
         ElasticRsParameters.__init__(self, **kwargs)
 
     def execute(self, filenames: iter=None, start_new=False):
-        """
-        :samp:`Publish ResourceSync documents under conditions of current {parameters}`
-
-        Call appropriate executor and publish sitemap documents on the resources found in `filenames`.
-
-        If no file/files 'resourcelist_*.xml' are found in metadata directory will always dispatch to
-        strategy (new) ``resourcelist``.
-
-        If ``parameter`` :func:`~rspub.core.rs_paras.RsParameters.is_saving_sitemaps` is ``False`` will do
-        a dry run: no existing sitemaps will be changed and no new sitemaps will be written to disk.
-
-        :param filenames: filenames and/or directories to scan
-        :param start_new: erase metadata directory and create new resourcelists
-        """
+        # filenames is not necessary, we use it only to match the method signature
         # always start fresh publication with resourcelist
         resourcelist_files = sorted(glob(self.abs_metadata_path("resourcelist_*.xml")))
         start_new = start_new or len(resourcelist_files) == 0
@@ -53,17 +40,6 @@ class ElasticResourceSync(ResourceSync, ElasticRsParameters):
             executor.execute()
         else:
             raise NotImplementedError("Strategy not implemented: %s" % self.strategy)
-
-        # # associate current parameters with a selector
-        # if isinstance(filenames, Selector):
-        #     if filenames.location:
-        #         try:
-        #             filenames.write()
-        #             self.selector_file = filenames.abs_location()
-        #             LOG.info("Associated parameters '%s' with selector at '%s'"
-        #                      % (self.configuration_name(), self.selector_file))
-        #         except Exception as err:
-        #             LOG.warning("Unable to save selector: {0}".format(err))
 
         # set a timestamp
         if self.is_saving_sitemaps:

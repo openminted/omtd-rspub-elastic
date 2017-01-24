@@ -15,23 +15,9 @@ class ElasticResourceListExecutor(Executor):
     def __init__(self, rs_parameters):
         super(ElasticResourceListExecutor, self).__init__(rs_parameters)
 
-    """
-        :samp:`Executes the new resourcelist strategy`
-
-        A ResourceListExecutor clears the metadata directory and creates new resourcelist(s) every time
-        the executor runs (and is_saving_sitemaps).
-        """
 
     def execute(self, filenames=None):
-        # filenames is not necessary, we put it in the signature only for overriding
-        """
-        ``build step 0`` :samp:`Publish ResourceSync documents`
-
-        Publish ResourceSync documents under conditions of
-        current :class:`~rspub.core.rs_paras.RsParameters`.
-
-        :param filenames: iter of filenames and/or directories to scan
-        """
+        # filenames is not necessary, we use it only to match the method signature
         self.date_start_processing = defaults.w3c_now()
         self.observers_inform(self, ExecutorEvent.execution_start, date_start_processing=self.date_start_processing)
         if not os.path.exists(self.para.abs_metadata_dir()):
@@ -54,7 +40,7 @@ class ElasticResourceListExecutor(Executor):
             self.clear_metadata_dir()
 
     def generate_rs_documents(self, filenames: iter = None) -> [SitemapData]:
-        # filenames is not necessary, we put it in the signature only for overriding
+        # filenames is not necessary, we use it only to match the method signature
         sitemap_data_iter = []
         generator = self.resourcelist_generator()
         for sitemap_data, sitemap in generator():
