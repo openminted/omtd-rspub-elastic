@@ -15,7 +15,6 @@ class ElasticResourceListExecutor(Executor):
     def __init__(self, rs_parameters):
         super(ElasticResourceListExecutor, self).__init__(rs_parameters)
 
-
     def execute(self, filenames=None):
         # filenames is not necessary, we use it only to match the method signature
         self.date_start_processing = defaults.w3c_now()

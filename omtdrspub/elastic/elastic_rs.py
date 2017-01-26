@@ -4,8 +4,8 @@ from rspub.core.rs import ResourceSync
 from rspub.core.rs_enum import Strategy
 from rspub.util.observe import Observable
 
-from resyncserver.elastic.elastic_rs_paras import ElasticRsParameters
-from resyncserver.elastic.exe_elastic_resourcelist import ElasticResourceListExecutor
+from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
+from omtdrspub.elastic.exe_elastic_resourcelist import ElasticResourceListExecutor
 
 
 class ElasticResourceSync(ResourceSync, ElasticRsParameters):

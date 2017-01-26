@@ -10,6 +10,7 @@ from rspub.util import defaults
 
 limit = -1
 
+
 def create_index(host, port, index, resource_type):
     es = Elasticsearch([{"host": host, "port": port}])
     mapping = {

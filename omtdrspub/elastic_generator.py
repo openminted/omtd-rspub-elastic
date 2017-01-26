@@ -7,10 +7,8 @@ import time
 import yaml
 from rspub.core.rs_enum import Strategy
 
-from resyncserver.elastic.elastic_rs import ElasticResourceSync
-from resyncserver.elastic.elastic_rs_paras import ElasticRsParameters
-
-RESOURCE_TYPE = "resource"
+from omtdrspub.elastic.elastic_rs import ElasticResourceSync
+from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
 
 
 class ElasticGenerator(object):
@@ -62,7 +60,7 @@ def main():
     print("Elapsed time:", elapsed_time)
     print("Published simple resourcelist at", rs_params.last_execution)
 
-    # todo
+
     # ch_params = RsParameters(**params)
     # gener = ElasticGenerator(rs_params, INDEX, RESOURCE_TYPE)
     # gener.generate_new_changelist()
