@@ -29,6 +29,10 @@ class ElasticGenerator(object):
         self.config.strategy = Strategy.new_changelist.value
         return self.generate()
 
+    def generate_inc_changelist(self):
+        self.config.strategy = Strategy.inc_changelist.value
+        return self.generate()
+
 
 def main():
     parser = optparse.OptionParser()
@@ -54,17 +58,13 @@ def main():
     start = time.clock()
 
     gener = ElasticGenerator(rs_params)
-    gener.generate_resourcelist()
+    #gener.generate_resourcelist()
+    gener.generate_new_changelist()
+    #gener.generate_inc_changelist()
 
     elapsed_time = time.clock() - start
     print("Elapsed time:", elapsed_time)
-    print("Published simple resourcelist at", rs_params.last_execution)
-
-
-    # ch_params = RsParameters(**params)
-    # gener = ElasticGenerator(rs_params, INDEX, RESOURCE_TYPE)
-    # gener.generate_new_changelist()
-    # print("Published capabilitylist at", ch_params.last_execution)
+    print("Published at", rs_params.last_execution)
 
 
 if __name__ == '__main__':

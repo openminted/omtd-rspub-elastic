@@ -5,6 +5,7 @@ from rspub.core.rs_enum import Strategy
 from rspub.util.observe import Observable
 
 from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
+from omtdrspub.elastic.exe_elastic_changelist import ElasticNewChangeListExecutor, ElasticIncrementalChangeListExecutor
 from omtdrspub.elastic.exe_elastic_resourcelist import ElasticResourceListExecutor
 
 
@@ -27,12 +28,9 @@ class ElasticResourceSync(ResourceSync, ElasticRsParameters):
         if self.strategy == Strategy.resourcelist or start_new:
             executor = ElasticResourceListExecutor(paras)
         elif self.strategy == Strategy.new_changelist:
-            # todo
-            # executor = ElasticNewChangeListExecutor(paras, index=self.index, doc_type=self.doc_type)
-            pass
+            executor = ElasticNewChangeListExecutor(paras)
         elif self.strategy == Strategy.inc_changelist:
-            # todo
-            # executor = ElasticIncrementalChangeListExecutor(paras, index=self.index, doc_type=self.doc_type)
+            executor = ElasticIncrementalChangeListExecutor(paras)
             pass
 
         if executor:

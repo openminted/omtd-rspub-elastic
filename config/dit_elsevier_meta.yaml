@@ -16,3 +16,4 @@ executor:
   elastic_port: 9200
   elastic_index: resourcesync
   elastic_resource_type: resource
+  elastic_change_type: change

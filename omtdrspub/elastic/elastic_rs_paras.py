@@ -14,6 +14,7 @@ class ElasticRsParameters(RsParameters):
         self.elastic_port = kwargs['elastic_port']
         self.elastic_index = kwargs['elastic_index']
         self.elastic_resource_type = kwargs['elastic_resource_type']
+        self.elastic_change_type = kwargs['elastic_change_type']
 
     # def abs_metadata_dir(self) -> str:
     #     """
