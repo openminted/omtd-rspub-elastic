@@ -1,0 +1,15 @@
+populator:
+  publishers:
+    - name: elsevier
+      resources: /Users/giorgio/Desktop/dit/elsevier/metadata
+      subfolders: ['']
+      type: metadata
+    - name: elsevier
+      resources: /Users/giorgio/Desktop/dit/elsevier/pdf
+      subfolders: ['']
+      type: pdf
+  elastic_host: localhost
+  elastic_port: 9200
+  elastic_index: resourcesync
+  elastic_resource_type: resource
+  elastic_change_type: change

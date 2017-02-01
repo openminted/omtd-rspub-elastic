@@ -121,10 +121,9 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
             # this way, we will avoid to register multiple entries for the same change when the strategy is inc_changelist
             prev_r = self.previous_resources
             curr_r = {resource.uri: resource for count, resource in resource_generator()}
-            created = [r for r in curr_r.values() if r.uri not in prev_r]
-            updated = [r for r in curr_r.values() if r.uri in prev_r and r.md5 != prev_r[r.uri].md5]
-            deleted = [r for r in prev_r.values() if r.uri not in curr_r]
-            unchang = [r for r in curr_r.values() if r.uri in prev_r and r.md5 == prev_r[r.uri].md5]
+            created = [r for r in curr_r.values() if r.change == "created"]
+            updated = [r for r in curr_r.values() if r.change == "updated"]
+            deleted = [r for r in prev_r.values() if r.change == "deleted"]
 
             # remove lastmod from deleted resource metadata
             for resource in deleted:
@@ -134,10 +133,9 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
             num_updated = len(updated)
             num_deleted = len(deleted)
             tot_changes = num_created + num_updated + num_deleted
-            tot_changes = num_created
             self.observers_inform(self, ExecutorEvent.found_changes, created=num_created, updated=num_updated,
-                                  deleted=num_deleted, unchanged=len(unchang))
-            all_changes = {"created": created}
+                                  deleted=num_deleted)
+            all_changes = {"created": created, "updated": updated, "deleted": deleted}
 
             ordinal = self.find_ordinal(Capability.changelist.name)
 
@@ -183,9 +181,9 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
             for e_page in elastic_page_generator():
                 for e_hit in e_page:
                     e_source = e_hit['_source']
-                    e_doc = ElasticChangeDoc(e_hit['_id'], e_source['filename'], e_source['time'], e_source['change'], e_source['publisher'], e_source['res_type'])
-                    filename = e_doc.filename
-                    file = os.path.abspath(filename)
+                    e_doc = ElasticChangeDoc(e_hit['_id'], e_source['file_path'], e_source['time'], e_source['change'], e_source['publisher'], e_source['res_type'])
+                    file_path = e_doc.file_path
+                    file = os.path.abspath(file_path)
                     count += 1
                     path = os.path.relpath(file, self.para.resource_dir)
                     uri = self.para.url_prefix + defaults.sanitize_url_path(path)
@@ -228,7 +226,14 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                                     }
                                 ]
                             }
-                        }
+                        },
+                        "sort": [
+                            {
+                                "time": {
+                                    "order": "asc"
+                                }
+                            }
+                        ]
                     }
 
             page = es.search(index=self.para.elastic_index, doc_type=self.para.elastic_change_type, scroll='2m', size=result_size,
@@ -318,9 +323,9 @@ class IncrementalChangeListExecutor(ElasticChangeListExecutor):
 
 
 class ElasticChangeDoc(object):
-    def __init__(self, elastic_id, filename, time, change, publisher, res_type):
+    def __init__(self, elastic_id, file_path, time, change, publisher, res_type):
         self._elastic_id = elastic_id
-        self._filename = filename
+        self._file_path = file_path
         self._time = time
         self._change = change
         self._publisher = publisher
@@ -331,8 +336,8 @@ class ElasticChangeDoc(object):
         return self.elastic_id
 
     @property
-    def filename(self):
-        return self._filename
+    def file_path(self):
+        return self._file_path
 
     @property
     def time(self):

@@ -118,17 +118,24 @@ class ElasticResourceListExecutor(Executor):
             for e_page in elastic_page_generator():
                 for e_hit in e_page:
                     e_source = e_hit['_source']
-                    e_doc = ElasticResourceDoc(e_hit['_id'], e_source['filename'], e_source['size'], e_source['md5'],
-                                               e_source['mime'], e_source['time'], e_source['publisher'], e_source['res_type'])
-                    filename = e_doc.filename
-                    file = os.path.abspath(filename)
+                    e_doc = ElasticResourceDoc(e_hit['_id'], e_source['file_path'], e_source['size'], e_source['md5'],
+                                               e_source['mime'], e_source['time'], e_source['publisher'], e_source['res_type'], e_source['ln'])
+                    file_path = e_doc.file_path
+                    file = os.path.abspath(file_path)
                     count += 1
                     path = os.path.relpath(file, self.para.resource_dir)
                     uri = self.para.url_prefix + defaults.sanitize_url_path(path)
+
+                    for link in e_doc.ln:
+                        link_path = os.path.relpath(link['href'], self.para.resource_dir)
+                        link_uri = self.para.url_prefix + defaults.sanitize_url_path(link_path)
+                        link['href'] = link_uri
+
                     resource = Resource(uri=uri, length=e_doc.size,
                                         lastmod=e_doc.time,
                                         md5=e_doc.md5,
-                                        mime_type=e_doc.mime)
+                                        mime_type=e_doc.mime,
+                                        ln=e_doc.ln)
                     yield count, resource
                     self.observers_inform(self, ExecutorEvent.created_resource, resource=resource,
                                           count=count, file=file)
@@ -194,23 +201,24 @@ class ElasticResourceListExecutor(Executor):
 
 
 class ElasticResourceDoc(object):
-    def __init__(self, elastic_id, filename, size, md5, mime, time, publisher, res_type):
+    def __init__(self, elastic_id, file_path, size, md5, mime, time, publisher, res_type, ln):
         self._elastic_id = elastic_id
-        self._filename = filename
+        self._file_path = file_path
         self._size = size
         self._md5 = md5
         self._mime = mime
         self._time = time
         self._publisher = publisher
         self._res_type = res_type
+        self._ln = ln
 
     @property
     def elastic_id(self):
         return self.elastic_id
 
     @property
-    def filename(self):
-        return self._filename
+    def file_path(self):
+        return self._file_path
 
     @property
     def size(self):
@@ -235,3 +243,7 @@ class ElasticResourceDoc(object):
     @property
     def res_type(self):
         return self._res_type
+
+    @property
+    def ln(self):
+        return self._ln
