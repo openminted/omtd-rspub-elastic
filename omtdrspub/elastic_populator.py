@@ -23,7 +23,11 @@ def create_index(host, port, index, resource_type, change_type):
                     "store": "yes",
                 },
                 "properties": {
-                    "file_path": {
+                    "abs_path": {
+                        "type": "string",
+                        "index": "not_analyzed"
+                    },
+                    "rel_path": {
                         "type": "string",
                         "index": "not_analyzed"
                     },
@@ -78,7 +82,11 @@ def create_index(host, port, index, resource_type, change_type):
                     "store": "yes"
                 },
                 "properties": {
-                    "file_path": {
+                    "abs_path": {
+                        "type": "string",
+                        "index": "not_analyzed"
+                    },
+                    "rel_path": {
                         "type": "string",
                         "index": "not_analyzed"
                     },
@@ -105,14 +113,15 @@ def create_index(host, port, index, resource_type, change_type):
     return es.indices.create(index=index, body=mapping, ignore=400)
 
 
-def put_into_elasticsearch(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, ln,
-                           file):
-    stat = os.stat(file)
+def put_into_elasticsearch(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, abs_path, rel_path, ln,
+                           ):
+    stat = os.stat(abs_path)
     doc = {
-        "file_path": file,
+        "abs_path": abs_path,
+        "rel_path": rel_path,
         "size": stat.st_size,
-        "md5": defaults.md5_for_file(file),
-        "mime": defaults.mime_type(file),
+        "md5": defaults.md5_for_file(abs_path),
+        "mime": defaults.mime_type(abs_path),
         "lastmod": defaults.w3c_datetime(stat.st_ctime),
         "publisher": pub_name,
         "res_type": res_type,
@@ -121,41 +130,42 @@ def put_into_elasticsearch(elastic_host, elastic_port, elastic_index, elastic_re
 
     es = Elasticsearch([{"host": elastic_host, "port": elastic_port}])
     return es.index(index=elastic_index, doc_type=elastic_resource_type, body=doc,
-                    id=os.path.basename(file).replace(".", ""))
+                    id=os.path.basename(abs_path).replace(".", ""))
 
 
-def traverse_folder(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, pub_folder):
+def traverse_folder(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, pub_folder, root_dir):
     global limit
     count = 0
     cur_folder = pub_folder
     files_names = os.listdir(cur_folder)
     for f in files_names:
         if limit < 0 or (limit > 0 and count < limit):
-            rel_path = os.path.join(cur_folder, f)
-            if os.path.isdir(rel_path):
+            abs_path = os.path.join(cur_folder, f)
+            if os.path.isdir(abs_path):
                 traverse_folder(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type,
-                                rel_path)
+                                abs_path, root_dir)
             else:
-                if not basename(rel_path).startswith('.'):
-                    f_path = os.path.join(pub_folder, rel_path)
+                if not basename(abs_path).startswith('.'):
                     ln_mime, ln_href, ln_rel = "", "", ""
                     # todo: substitute with es bulk API
                     if res_type == "metadata":
                         ln_mime = "application/pdf"
-                        ln_href = f_path.replace("/metadata/", "/pdf/", 1).replace(".xml", ".pdf")
+                        ln_href = abs_path.replace("/metadata/", "/pdf/", 1).replace(".xml", ".pdf")
                         ln_rel = "describes"
                     elif res_type == "pdf":
                         ln_mime = "text/xml"
-                        ln_href = f_path.replace("/pdf/", "/metadata/", 1).replace(".pdf", ".xml")
+                        ln_href = abs_path.replace("/pdf/", "/metadata/", 1).replace(".pdf", ".xml")
                         ln_rel = "describedBy"
 
                     if os.path.exists(ln_href):
                         ln = [{"href": ln_href, "rel": ln_rel, "mime": ln_mime}]
                     else:
-                        ln = None
+                        ln = []
+
+                    rel_path = os.path.relpath(abs_path, root_dir)
 
                     result = put_into_elasticsearch(elastic_host, elastic_port, elastic_index, elastic_resource_type,
-                                                    pub_name, res_type, ln, f_path)
+                                                    pub_name, res_type, abs_path, rel_path, ln)
                     print(result)
                     count += 1
         else:
@@ -179,6 +189,7 @@ def main():
 
     config = yaml.load(open(args.config_file, 'r'))['populator']
     publishers = config['publishers']
+    res_root_dir = config['res_root_dir']
     elastic_host = config['elastic_host']
     elastic_port = config['elastic_port']
     elastic_index = config['elastic_index']
@@ -200,7 +211,7 @@ def main():
             else:
                 folder_type = subfolder
             executor.submit(traverse_folder, elastic_host, elastic_port, elastic_index, elastic_resource_type,
-                            publisher["name"], folder_type, os.path.join(publisher["resources"], subfolder))
+                            publisher["name"], folder_type, os.path.join(publisher["resources"], subfolder), res_root_dir)
 
 
 if __name__ == '__main__':

@@ -177,19 +177,17 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
             for e_page in elastic_page_generator():
                 for e_hit in e_page:
                     e_source = e_hit['_source']
-                    e_doc = ElasticChangeDoc(e_hit['_id'], e_source['file_path'], e_source['lastmod'],
+                    e_doc = ElasticChangeDoc(e_hit['_id'], e_source['abs_path'], e_source['rel_path'], e_source['lastmod'],
                                              e_source['change'], e_source['publisher'], e_source['res_type'])
-                    file_path = e_doc.file_path
-                    file = os.path.abspath(file_path)
                     count += 1
-                    path = os.path.relpath(file, self.para.resource_dir)
-                    uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(path))
+                    #path = os.path.relpath(file, self.para.resource_dir)
+                    uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(e_doc.rel_path)) 
                     resource = Resource(uri=uri,
                                         lastmod=e_doc.lastmod,
                                         change=e_doc.change)
                     yield count, resource
                     self.observers_inform(self, ExecutorEvent.created_resource, resource=resource,
-                                          count=count, file=file)
+                                          count=count)
 
         return generator
 
@@ -323,9 +321,10 @@ class IncrementalChangeListExecutor(ElasticChangeListExecutor):
 
 
 class ElasticChangeDoc(object):
-    def __init__(self, elastic_id, file_path, lastmod, change, publisher, res_type):
+    def __init__(self, elastic_id, abs_path, rel_path, lastmod, change, publisher, res_type):
         self._elastic_id = elastic_id
-        self._file_path = file_path
+        self._abs_path = abs_path
+        self._rel_path = rel_path
         self._lastmod = lastmod
         self._change = change
         self._publisher = publisher
@@ -336,8 +335,12 @@ class ElasticChangeDoc(object):
         return self.elastic_id
 
     @property
-    def file_path(self):
-        return self._file_path
+    def abs_path(self):
+        return self._abs_path
+
+    @property
+    def rel_path(self):
+        return self._rel_path
 
     @property
     def lastmod(self):

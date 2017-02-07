@@ -119,18 +119,17 @@ class ElasticResourceListExecutor(Executor):
             for e_page in elastic_page_generator():
                 for e_hit in e_page:
                     e_source = e_hit['_source']
-                    e_doc = ElasticResourceDoc(e_hit['_id'], e_source['file_path'], e_source['size'], e_source['md5'],
+                    e_doc = ElasticResourceDoc(e_hit['_id'], e_source['abs_path'], e_source['rel_path'], e_source['size'], e_source['md5'],
                                                e_source['mime'], e_source['lastmod'], e_source['publisher'], e_source['res_type'], e_source['ln'])
-                    file_path = e_doc.file_path
-                    file = os.path.abspath(file_path)
                     count += 1
-                    path = os.path.relpath(file, self.para.resource_dir)
-                    uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(path))
-
+                    #path = os.path.relpath(file, self.para.resource_dir)
+                    #uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(path))
+                    uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(e_doc.rel_path))
                     if e_doc.ln:
                         for link in e_doc.ln:
-                            link_path = os.path.relpath(link['href'], self.para.resource_dir)
-                            link_uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(link_path))
+                            #link_path = os.path.relpath(link['href'], self.para.resource_dir)
+                            #link_uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(link_path))
+                            link_uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(link['href']))
                             link['href'] = link_uri
 
                     resource = Resource(uri=uri, length=e_doc.size,
@@ -140,7 +139,7 @@ class ElasticResourceListExecutor(Executor):
                                         ln=e_doc.ln)
                     yield count, resource
                     self.observers_inform(self, ExecutorEvent.created_resource, resource=resource,
-                                          count=count, file=file)
+                                          count=count)
 
         return generator
 
@@ -203,9 +202,10 @@ class ElasticResourceListExecutor(Executor):
 
 
 class ElasticResourceDoc(object):
-    def __init__(self, elastic_id, file_path, size, md5, mime, time, publisher, res_type, ln):
+    def __init__(self, elastic_id, abs_path, rel_path, size, md5, mime, time, publisher, res_type, ln):
         self._elastic_id = elastic_id
-        self._file_path = file_path
+        self._abs_path = abs_path
+        self._rel_path = rel_path
         self._size = size
         self._md5 = md5
         self._mime = mime
@@ -219,8 +219,12 @@ class ElasticResourceDoc(object):
         return self.elastic_id
 
     @property
-    def file_path(self):
-        return self._file_path
+    def abs_path(self):
+        return self._abs_path
+
+    @property
+    def rel_path(self):
+        return self._rel_path
 
     @property
     def size(self):

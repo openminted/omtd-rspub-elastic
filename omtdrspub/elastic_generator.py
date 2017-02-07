@@ -60,9 +60,9 @@ def main():
     start = time.clock()
 
     gener = ElasticGenerator(rs_params)
-    #gener.generate_resourcelist()
+    gener.generate_resourcelist()
     # gener.generate_new_changelist()
-    gener.generate_inc_changelist()
+    # gener.generate_inc_changelist()
 
     elapsed_time = time.clock() - start
     print("Elapsed time:", elapsed_time)

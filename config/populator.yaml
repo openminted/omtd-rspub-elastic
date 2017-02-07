@@ -13,3 +13,4 @@ populator:
   elastic_index: resourcesync
   elastic_resource_type: resource
   elastic_change_type: change
+  res_root_dir: /Users/giorgio/Desktop/dit

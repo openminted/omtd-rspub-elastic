@@ -3,15 +3,16 @@
 executor:
   publisher_name: elsevier
   res_type: metadata
-  resource_dir: /Users/giorgio/Desktop/dit
-  metadata_dir: resourcesync/elsevier/metadata
-  url_prefix: http://giorgios-macbook-pro.local:8888
+  resource_dir: /Users/giorgio/Desktop/dit # root dir for sitemaps
+  metadata_dir: resourcesync/elsevier/metadata # rel dir for sitemaps
+  res_root_dir: /Users/giorgio/Desktop/dit # root dir for resources
+  url_prefix: http://giorgios-macbook-pro.local:8888/ciao
   max_items_in_list: 50000
   zero_fill_filename: 4
   is_saving_pretty_xml: True
   is_saving_sitemaps: True
   has_wellknown_at_root: True
-  description_dir: /Users/giorgio/Desktop/dit
+  description_dir: /Users/giorgio/Desktop/dit/resourcesync # root dir for source description
   elastic_host: localhost
   elastic_port: 9200
   elastic_index: resourcesync
