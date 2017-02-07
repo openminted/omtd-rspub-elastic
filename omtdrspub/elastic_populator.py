@@ -13,101 +13,115 @@ limit = -1
 
 def create_index(host, port, index, resource_type, change_type):
     es = Elasticsearch([{"host": host, "port": port}])
-    #todo: make documents unique for each file
+    # todo: make documents unique for each file
     mapping = {
-                "mappings": {
-                    resource_type: {
-                      "properties": {
-                        "file_path": {
-                            "type": "string",
-                            "index": "not_analyzed"
-                        },
-                        "size": {
-                            "type": "integer",
-                            "index": "not_analyzed"
-                        },
-                        "md5": {
-                            "type": "string",
-                            "index": "not_analyzed"
-                        },
-                        "mime": {
-                            "type": "string",
-                            "index": "not_analyzed"
-                        },
-                        "time": {
-                            "type": "date",
-                            "index": "not_analyzed"
-                        },
-                        "publisher": {
-                            "type": "string",
-                            "index": "not_analyzed"
-                        },
-                        "res_type": {
-                            "type": "string",
-                            "index": "not_analyzed"
-                        },
-                        "ln": {
-                            "type": "nested",
-                            "index_name": "link",
-                            "properties": {
-                                "rel": {
-                                    "type": "string",
-                                    "index": "not_analyzed"
-                                },
-                                "href": {
-                                    "type": "string",
-                                    "index": "not_analyzed"
-                                },
-                                "mime": {
-                                    "type": "string",
-                                    "index": "not_analyzed"
-                                }
-                            }
-                        }
-                      }
+        "mappings": {
+            resource_type: {
+                "_timestamp": {
+                    "enabled": "true",
+                    "format": "basic_date_time_no_millis",
+                    "store": "yes",
+                },
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "index": "not_analyzed"
                     },
-                    change_type: {
-                        "file_path": {
-                            "type": "string",
-                            "index": "not_analyzed"
-                        },
-                        "time": {
-                            "type": "date",
-                            "index": "not_analyzed"
-                        },
-                        "change": {
-                            "type": "string",
-                            "index": "not_analyzed"
-                        },
-                        "publisher": {
-                            "type": "string",
-                            "index": "not_analyzed"
-                        },
-                        "res_type": {
-                            "type": "string",
-                            "index": "not_analyzed"
+                    "size": {
+                        "type": "integer",
+                        "index": "not_analyzed"
+                    },
+                    "md5": {
+                        "type": "string",
+                        "index": "not_analyzed"
+                    },
+                    "mime": {
+                        "type": "string",
+                        "index": "not_analyzed"
+                    },
+                    "lastmod": {
+                        "type": "date",
+                        "index": "not_analyzed"
+                    },
+                    "publisher": {
+                        "type": "string",
+                        "index": "not_analyzed"
+                    },
+                    "res_type": {
+                        "type": "string",
+                        "index": "not_analyzed"
+                    },
+                    "ln": {
+                        "type": "nested",
+                        "index_name": "link",
+                        "properties": {
+                            "rel": {
+                                "type": "string",
+                                "index": "not_analyzed"
+                            },
+                            "href": {
+                                "type": "string",
+                                "index": "not_analyzed"
+                            },
+                            "mime": {
+                                "type": "string",
+                                "index": "not_analyzed"
+                            }
                         }
                     }
                 }
+            },
+            change_type: {
+                "_timestamp": {
+                    "enabled": "true",
+                    "format": "basic_date_time_no_millis",
+                    "store": "yes"
+                },
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "index": "not_analyzed"
+                    },
+                    "lastmod": {
+                        "type": "date",
+                        "index": "not_analyzed"
+                    },
+                    "change": {
+                        "type": "string",
+                        "index": "not_analyzed"
+                    },
+                    "publisher": {
+                        "type": "string",
+                        "index": "not_analyzed"
+                    },
+                    "res_type": {
+                        "type": "string",
+                        "index": "not_analyzed"
+                    }
+                }
             }
-    es.indices.create(index=index, body=mapping, ignore=400)
+        }
+    }
+    return es.indices.create(index=index, body=mapping, ignore=400)
 
 
-def put_into_elasticsearch(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, ln, file):
+def put_into_elasticsearch(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, ln,
+                           file):
     stat = os.stat(file)
     doc = {
-            "file_path": file,
-            "size": stat.st_size,
-            "md5": defaults.md5_for_file(file),
-            "mime": defaults.mime_type(file),
-            "time": defaults.w3c_datetime(stat.st_ctime),
-            "publisher": pub_name,
-            "res_type": res_type,
-            "ln": ln
-         }
+        "file_path": file,
+        "size": stat.st_size,
+        "md5": defaults.md5_for_file(file),
+        "mime": defaults.mime_type(file),
+        "lastmod": defaults.w3c_datetime(stat.st_ctime),
+        "publisher": pub_name,
+        "res_type": res_type,
+        "ln": ln
+    }
 
     es = Elasticsearch([{"host": elastic_host, "port": elastic_port}])
-    es.index(index=elastic_index, doc_type=elastic_resource_type, body=doc, id=os.path.basename(file).replace(".", ""))
+    return es.index(index=elastic_index, doc_type=elastic_resource_type, body=doc,
+                    id=os.path.basename(file).replace(".", ""))
 
 
 def traverse_folder(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, pub_folder):
@@ -119,7 +133,8 @@ def traverse_folder(elastic_host, elastic_port, elastic_index, elastic_resource_
         if limit < 0 or (limit > 0 and count < limit):
             rel_path = os.path.join(cur_folder, f)
             if os.path.isdir(rel_path):
-                traverse_folder(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, rel_path)
+                traverse_folder(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type,
+                                rel_path)
             else:
                 if not basename(rel_path).startswith('.'):
                     f_path = os.path.join(pub_folder, rel_path)
@@ -134,13 +149,14 @@ def traverse_folder(elastic_host, elastic_port, elastic_index, elastic_resource_
                         ln_href = f_path.replace("/pdf/", "/metadata/", 1).replace(".pdf", ".xml")
                         ln_rel = "describedBy"
 
-                    #if os.path.exists(ln_href):
-                    ln = [{"href": ln_href, "rel": ln_rel, "mime": ln_mime}]
-                    #else:
-                        #ln = None
+                    if os.path.exists(ln_href):
+                        ln = [{"href": ln_href, "rel": ln_rel, "mime": ln_mime}]
+                    else:
+                        ln = None
 
-                    put_into_elasticsearch(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, ln, f_path)
-                    print(rel_path)
+                    result = put_into_elasticsearch(elastic_host, elastic_port, elastic_index, elastic_resource_type,
+                                                    pub_name, res_type, ln, f_path)
+                    print(result)
                     count += 1
         else:
             break
@@ -174,7 +190,8 @@ def main():
 
     executor = ThreadPoolExecutor(max_workers=multiprocessing.cpu_count())
 
-    create_index(elastic_host, elastic_port, elastic_index, elastic_resource_type, elastic_change_type)
+    result = create_index(elastic_host, elastic_port, elastic_index, elastic_resource_type, elastic_change_type)
+    print(result)
     for publisher in publishers:
         subfolders = publisher['subfolders']
         for subfolder in subfolders:
@@ -182,17 +199,9 @@ def main():
                 folder_type = publisher['type']
             else:
                 folder_type = subfolder
-            executor.submit(traverse_folder, elastic_host, elastic_port, elastic_index, elastic_resource_type, publisher["name"], folder_type, os.path.join(publisher["resources"], subfolder))
+            executor.submit(traverse_folder, elastic_host, elastic_port, elastic_index, elastic_resource_type,
+                            publisher["name"], folder_type, os.path.join(publisher["resources"], subfolder))
 
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
-
-
-

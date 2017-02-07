@@ -68,12 +68,20 @@ class ElasticRsParameters(RsParameters):
             value += "/"
         self._url_prefix = value
 
+
 def is_int(s):
     try:
         int(s)
         return True
     except ValueError:
         return False
+
+
+class ElasticRsChangelistParameters(ElasticRsParameters):
+
+    def __init__(self, **kwargs):
+        super(ElasticRsParameters, self).__init__(**kwargs)
+        self.changes_since = kwargs['changes_since']
 
 
 

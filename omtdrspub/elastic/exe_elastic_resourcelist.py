@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urljoin
 
 from elasticsearch import Elasticsearch
 from resync import Resource
@@ -55,7 +56,7 @@ class ElasticResourceListExecutor(Executor):
             resourcelist_index.md_completed = self.date_end_processing
             index_path = self.para.abs_metadata_path("resourcelist-index.xml")
             rel_index_path = os.path.relpath(index_path, self.para.resource_dir)
-            index_url = self.para.url_prefix + defaults.sanitize_url_path(rel_index_path)
+            index_url = urljoin(self.para.url_prefix, defaults.sanitize_url_path(rel_index_path))
             resourcelist_index.link_set(rel="up", href=self.para.capabilitylist_url())
 
             for sitemap_data in sitemap_data_iter:
@@ -119,17 +120,18 @@ class ElasticResourceListExecutor(Executor):
                 for e_hit in e_page:
                     e_source = e_hit['_source']
                     e_doc = ElasticResourceDoc(e_hit['_id'], e_source['file_path'], e_source['size'], e_source['md5'],
-                                               e_source['mime'], e_source['time'], e_source['publisher'], e_source['res_type'], e_source['ln'])
+                                               e_source['mime'], e_source['lastmod'], e_source['publisher'], e_source['res_type'], e_source['ln'])
                     file_path = e_doc.file_path
                     file = os.path.abspath(file_path)
                     count += 1
                     path = os.path.relpath(file, self.para.resource_dir)
-                    uri = self.para.url_prefix + defaults.sanitize_url_path(path)
+                    uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(path))
 
-                    for link in e_doc.ln:
-                        link_path = os.path.relpath(link['href'], self.para.resource_dir)
-                        link_uri = self.para.url_prefix + defaults.sanitize_url_path(link_path)
-                        link['href'] = link_uri
+                    if e_doc.ln:
+                        for link in e_doc.ln:
+                            link_path = os.path.relpath(link['href'], self.para.resource_dir)
+                            link_uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(link_path))
+                            link['href'] = link_uri
 
                     resource = Resource(uri=uri, length=e_doc.size,
                                         lastmod=e_doc.time,

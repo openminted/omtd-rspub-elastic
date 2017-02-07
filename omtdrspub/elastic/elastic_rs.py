@@ -31,7 +31,6 @@ class ElasticResourceSync(ResourceSync, ElasticRsParameters):
             executor = ElasticNewChangeListExecutor(paras)
         elif self.strategy == Strategy.inc_changelist:
             executor = ElasticIncrementalChangeListExecutor(paras)
-            pass
 
         if executor:
             executor.register(*self.observers)
@@ -40,7 +39,7 @@ class ElasticResourceSync(ResourceSync, ElasticRsParameters):
             raise NotImplementedError("Strategy not implemented: %s" % self.strategy)
 
         # set a timestamp
-        if self.is_saving_sitemaps:
-            self.last_execution = executor.date_start_processing
+        #if self.is_saving_sitemaps:
+        #    self.last_execution = executor.date_start_processing
 
-        self.save_configuration(True)
+        #self.save_configuration(True)

@@ -4,6 +4,7 @@
 import os
 from abc import ABCMeta
 from glob import glob
+from urllib.parse import urljoin
 
 from elasticsearch import Elasticsearch
 from resync import ChangeList
@@ -47,7 +48,7 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
         Executor.__init__(self, rs_parameters)
 
         # next parameters will all be set in the method update_previous_state
-        self.previous_resources = None
+        self.previous_changes = None
         self.date_resourcelist_completed = None
         self.date_changelist_from = None
         self.resourcelist_files = []
@@ -80,8 +81,8 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
             self.finish_sitemap(-1, changelist_index)
 
     def update_previous_state(self):
-        if self.previous_resources is None:
-            self.previous_resources = {}
+        if self.previous_changes is None:
+            self.previous_changes = {}
 
             # search for resourcelists
             self.resourcelist_files = sorted(glob(self.para.abs_metadata_path("resourcelist_*.xml")))
@@ -95,7 +96,7 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                 if self.date_resourcelist_completed is None:
                     self.date_resourcelist_completed = resourcelist.md_at
 
-            #    self.previous_resources.update({resource.uri: resource for resource in resourcelist.resources})
+                # self.previous_resources.update({resource.uri: resource for resource in resourcelist.resources})
 
             # search for changelists
             self.changelist_files = sorted(glob(self.para.abs_metadata_path("changelist_*.xml")))
@@ -105,29 +106,24 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                     sm = Sitemap()
                     sm.parse_xml(cl_file, resources=changelist)
 
-                for resource in changelist.resources:
-                    if resource.change == "created" or resource.change == "updated":
-                        self.previous_resources.update({resource.uri: resource})
-                    elif resource.change == "deleted" and resource.uri in self.previous_resources:
-                        del self.previous_resources[resource.uri]
+                for r_change in changelist.resources:
+                    self.previous_changes.update({r_change.uri: r_change})
 
     def changelist_generator(self) -> iter:
 
         def generator(changelist=None) -> [SitemapData, ChangeList]:
-            count = 0
+            new_changes = {}
             resource_generator = self.resource_generator()
             self.update_previous_state()
-            # self.previous_resources will only contain the resources subjected to changes in a previous changelist if existing.
-            # this way, we will avoid to register multiple entries for the same change when the strategy is inc_changelist
-            prev_r = self.previous_resources
-            curr_r = {resource.uri: resource for count, resource in resource_generator()}
-            created = [r for r in curr_r.values() if r.change == "created"]
-            updated = [r for r in curr_r.values() if r.change == "updated"]
-            deleted = [r for r in prev_r.values() if r.change == "deleted"]
+            prev_changes = self.previous_changes
+            es_changes = [resource for count, resource in resource_generator()]
 
-            # remove lastmod from deleted resource metadata
-            for resource in deleted:
-                resource.lastmod = None
+            for r_change in es_changes:
+                new_changes.update({r_change.uri: r_change})
+
+            created = [r for r in new_changes.values() if r.change == "created"]
+            updated = [r for r in new_changes.values() if r.change == "updated"]
+            deleted = [r for r in new_changes.values() if r.change == "deleted" and prev_changes[r.uri].change != "deleted"]
 
             num_created = len(created)
             num_updated = len(updated)
@@ -149,14 +145,14 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                     resource_count = 0
 
             for kv in all_changes.items():
-                for resource in kv[1]:
+                for r_change in kv[1]:
                     if changelist is None:
                         changelist = ChangeList()
                         changelist.md_from = self.date_changelist_from
 
-                    resource.change = kv[0] # type of change: created, updated or deleted
-                    #resource.md_datetime = self.date_start_processing
-                    changelist.add(resource)
+                    r_change.change = kv[0] # type of change: created, updated or deleted
+                    r_change.md_datetime = self.date_start_processing
+                    changelist.add(r_change)
                     resource_count += 1
 
                     # under conditions: yield the current changelist
@@ -181,14 +177,15 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
             for e_page in elastic_page_generator():
                 for e_hit in e_page:
                     e_source = e_hit['_source']
-                    e_doc = ElasticChangeDoc(e_hit['_id'], e_source['file_path'], e_source['time'], e_source['change'], e_source['publisher'], e_source['res_type'])
+                    e_doc = ElasticChangeDoc(e_hit['_id'], e_source['file_path'], e_source['lastmod'],
+                                             e_source['change'], e_source['publisher'], e_source['res_type'])
                     file_path = e_doc.file_path
                     file = os.path.abspath(file_path)
                     count += 1
                     path = os.path.relpath(file, self.para.resource_dir)
-                    uri = self.para.url_prefix + defaults.sanitize_url_path(path)
+                    uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(path))
                     resource = Resource(uri=uri,
-                                        lastmod=e_doc.time,
+                                        lastmod=e_doc.lastmod,
                                         change=e_doc.change)
                     yield count, resource
                     self.observers_inform(self, ExecutorEvent.created_resource, resource=resource,
@@ -211,6 +208,9 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                 n_iter = int(n)
                 result_size = MAX_RESULT_WINDOW
 
+            changes_since = self.para.changes_since if hasattr(self.para, 'changes_since') \
+                else self.date_resourcelist_completed
+
             query = {
                         "query": {
                             "bool": {
@@ -222,14 +222,14 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                                         "term": {"res_type": self.para.res_type}
                                     },
                                     {
-                                        "range": {"time": {"gte": self.date_changelist_from}}
+                                        "range": {"lastmod": {"gte": changes_since}}
                                     }
                                 ]
                             }
                         },
                         "sort": [
                             {
-                                "time": {
+                                "_timestamp": {
                                     "order": "asc"
                                 }
                             }
@@ -323,10 +323,10 @@ class IncrementalChangeListExecutor(ElasticChangeListExecutor):
 
 
 class ElasticChangeDoc(object):
-    def __init__(self, elastic_id, file_path, time, change, publisher, res_type):
+    def __init__(self, elastic_id, file_path, lastmod, change, publisher, res_type):
         self._elastic_id = elastic_id
         self._file_path = file_path
-        self._time = time
+        self._lastmod = lastmod
         self._change = change
         self._publisher = publisher
         self._res_type = res_type
@@ -340,8 +340,8 @@ class ElasticChangeDoc(object):
         return self._file_path
 
     @property
-    def time(self):
-        return self._time
+    def lastmod(self):
+        return self._lastmod
 
     @property
     def change(self):
@@ -381,7 +381,7 @@ class ElasticNewChangeListExecutor(ElasticChangeListExecutor):
     def post_process_documents(self, sitemap_data_iter: iter):
         # change md:until value of older changelists - if we created new changelists.
         # self.changelist_files was globed before new documents were generated (self.update_previous_state).
-        if len(sitemap_data_iter) > 0 and self.para.is_saving_sitemaps:
+        if self.para.is_saving_sitemaps:
             for filename in self.changelist_files:
                 changelist = self.read_sitemap(filename, ChangeList())
                 if changelist.md_until is None:

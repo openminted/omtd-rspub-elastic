@@ -6,6 +6,7 @@ import time
 
 import yaml
 from rspub.core.rs_enum import Strategy
+from rspub.util import defaults
 
 from omtdrspub.elastic.elastic_rs import ElasticResourceSync
 from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
@@ -49,7 +50,8 @@ def main():
         parser.print_help()
         return
 
-    config = yaml.load(open(args.config_file, 'r'))['executor']
+    f = open(args.config_file, 'r+')
+    config = yaml.load(f)['executor']
 
     if not os.path.exists(config['description_dir']):
         os.makedirs(config['description_dir'])
@@ -58,13 +60,15 @@ def main():
     start = time.clock()
 
     gener = ElasticGenerator(rs_params)
-    gener.generate_resourcelist()
-    #gener.generate_new_changelist()
-    #gener.generate_inc_changelist()
+    #gener.generate_resourcelist()
+    # gener.generate_new_changelist()
+    gener.generate_inc_changelist()
 
     elapsed_time = time.clock() - start
     print("Elapsed time:", elapsed_time)
-    print("Published at", rs_params.last_execution)
+    #print("Published at", rs_params.last_execution)
+
+    #f.write("\n  last_execution: " + )
 
 
 if __name__ == '__main__':
