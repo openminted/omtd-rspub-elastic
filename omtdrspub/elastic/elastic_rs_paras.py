@@ -9,7 +9,7 @@ class ElasticRsParameters(RsParameters):
 
     def __init__(self, **kwargs):
         super(ElasticRsParameters, self).__init__(**kwargs)
-        self.publisher_name = kwargs['publisher_name']
+        self.res_set = kwargs['res_set']
         self.res_type = kwargs['res_type']
         self.res_root_dir = kwargs['res_root_dir']
         self.elastic_host = kwargs['elastic_host']

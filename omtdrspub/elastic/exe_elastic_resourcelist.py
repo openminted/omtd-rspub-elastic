@@ -119,8 +119,8 @@ class ElasticResourceListExecutor(Executor):
             for e_page in elastic_page_generator():
                 for e_hit in e_page:
                     e_source = e_hit['_source']
-                    e_doc = ElasticResourceDoc(e_hit['_id'], e_source['abs_path'], e_source['rel_path'], e_source['size'], e_source['md5'],
-                                               e_source['mime'], e_source['lastmod'], e_source['publisher'], e_source['res_type'], e_source['ln'])
+                    e_doc = ElasticResourceDoc(e_hit['_id'], e_source['rel_path'], e_source['length'], e_source['md5'],
+                                               e_source['mime'], e_source['lastmod'], e_source['res_set'], e_source['res_type'], e_source['ln'])
                     count += 1
                     #path = os.path.relpath(file, self.para.resource_dir)
                     #uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(path))
@@ -132,7 +132,7 @@ class ElasticResourceListExecutor(Executor):
                             link_uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(link['href']))
                             link['href'] = link_uri
 
-                    resource = Resource(uri=uri, length=e_doc.size,
+                    resource = Resource(uri=uri, length=e_doc.length,
                                         lastmod=e_doc.time,
                                         md5=e_doc.md5,
                                         mime_type=e_doc.mime,
@@ -162,7 +162,7 @@ class ElasticResourceListExecutor(Executor):
                         {"bool":
                             {"must":[
                                  {"term":
-                                      {"publisher": self.para.publisher_name}
+                                      {"res_set": self.para.res_set}
                                   },
 
                                  {"term":
@@ -202,15 +202,14 @@ class ElasticResourceListExecutor(Executor):
 
 
 class ElasticResourceDoc(object):
-    def __init__(self, elastic_id, abs_path, rel_path, size, md5, mime, time, publisher, res_type, ln):
+    def __init__(self, elastic_id, rel_path, length, md5, mime, time, res_set, res_type, ln):
         self._elastic_id = elastic_id
-        self._abs_path = abs_path
         self._rel_path = rel_path
-        self._size = size
+        self._length = length
         self._md5 = md5
         self._mime = mime
         self._time = time
-        self._publisher = publisher
+        self._res_set = res_set
         self._res_type = res_type
         self._ln = ln
 
@@ -219,16 +218,12 @@ class ElasticResourceDoc(object):
         return self.elastic_id
 
     @property
-    def abs_path(self):
-        return self._abs_path
-
-    @property
     def rel_path(self):
         return self._rel_path
 
     @property
-    def size(self):
-        return self._size
+    def length(self):
+        return self._length
 
     @property
     def md5(self):
@@ -243,8 +238,8 @@ class ElasticResourceDoc(object):
         return self._time
 
     @property
-    def publisher(self):
-        return self._publisher
+    def res_set(self):
+        return self._res_set
 
     @property
     def res_type(self):

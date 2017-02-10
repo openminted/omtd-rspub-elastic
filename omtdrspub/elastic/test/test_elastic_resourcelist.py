@@ -31,14 +31,14 @@ class TestElasticResourceList(unittest.TestCase):
                                   "metadata", [{"href": "file2.pdf", "rel": "describes", "mime": "application/pdf"}])
         docs = [doc1, doc2]
         for doc in docs:
-            path = os.path.relpath(doc.file_path, res_dir)
+            path = os.path.relpath(doc.rel_path, res_dir)
             uri = compose_uri(path)
 
             for link in doc.ln:
                 link_uri = compose_uri(link['href'])
                 link['href'] = link_uri
 
-            resource = Resource(uri=uri, length=doc.size,
+            resource = Resource(uri=uri, length=doc.length,
                                 lastmod=doc.time,
                                 md5=doc.md5,
                                 mime_type=doc.mime,

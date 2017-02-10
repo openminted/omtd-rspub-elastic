@@ -23,15 +23,11 @@ def create_index(host, port, index, resource_type, change_type):
                     "store": "yes",
                 },
                 "properties": {
-                    "abs_path": {
-                        "type": "string",
-                        "index": "not_analyzed"
-                    },
                     "rel_path": {
                         "type": "string",
                         "index": "not_analyzed"
                     },
-                    "size": {
+                    "length": {
                         "type": "integer",
                         "index": "not_analyzed"
                     },
@@ -45,9 +41,8 @@ def create_index(host, port, index, resource_type, change_type):
                     },
                     "lastmod": {
                         "type": "date",
-                        "index": "not_analyzed"
                     },
-                    "publisher": {
+                    "res_set": {
                         "type": "string",
                         "index": "not_analyzed"
                     },
@@ -82,23 +77,18 @@ def create_index(host, port, index, resource_type, change_type):
                     "store": "yes"
                 },
                 "properties": {
-                    "abs_path": {
-                        "type": "string",
-                        "index": "not_analyzed"
-                    },
                     "rel_path": {
                         "type": "string",
                         "index": "not_analyzed"
                     },
                     "lastmod": {
                         "type": "date",
-                        "index": "not_analyzed"
                     },
                     "change": {
                         "type": "string",
                         "index": "not_analyzed"
                     },
-                    "publisher": {
+                    "res_set": {
                         "type": "string",
                         "index": "not_analyzed"
                     },
@@ -113,17 +103,16 @@ def create_index(host, port, index, resource_type, change_type):
     return es.indices.create(index=index, body=mapping, ignore=400)
 
 
-def put_into_elasticsearch(elastic_host, elastic_port, elastic_index, elastic_resource_type, pub_name, res_type, abs_path, rel_path, ln,
+def put_into_elasticsearch(elastic_host, elastic_port, elastic_index, elastic_resource_type, res_set, res_type, abs_path, rel_path, ln,
                            ):
     stat = os.stat(abs_path)
     doc = {
-        "abs_path": abs_path,
         "rel_path": rel_path,
-        "size": stat.st_size,
+        "length": stat.st_size,
         "md5": defaults.md5_for_file(abs_path),
         "mime": defaults.mime_type(abs_path),
         "lastmod": defaults.w3c_datetime(stat.st_ctime),
-        "publisher": pub_name,
+        "res_set": res_set,
         "res_type": res_type,
         "ln": ln
     }
@@ -188,7 +177,7 @@ def main():
         return
 
     config = yaml.load(open(args.config_file, 'r'))['populator']
-    publishers = config['publishers']
+    res_sets = config['res_sets']
     res_root_dir = config['res_root_dir']
     elastic_host = config['elastic_host']
     elastic_port = config['elastic_port']
@@ -203,15 +192,15 @@ def main():
 
     result = create_index(elastic_host, elastic_port, elastic_index, elastic_resource_type, elastic_change_type)
     print(result)
-    for publisher in publishers:
-        subfolders = publisher['subfolders']
+    for res_set in res_sets:
+        subfolders = res_set['subfolders']
         for subfolder in subfolders:
-            if 'type' in publisher:
-                folder_type = publisher['type']
+            if 'type' in res_set:
+                folder_type = res_set['type']
             else:
                 folder_type = subfolder
             executor.submit(traverse_folder, elastic_host, elastic_port, elastic_index, elastic_resource_type,
-                            publisher["name"], folder_type, os.path.join(publisher["resources"], subfolder), res_root_dir)
+                            res_set["name"], folder_type, os.path.join(res_set["resources"], subfolder), res_root_dir)
 
 
 if __name__ == '__main__':
