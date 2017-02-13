@@ -1,14 +1,13 @@
 import os
 from urllib.parse import urljoin
 
-from elasticsearch import Elasticsearch
 from resync import Resource
 from resync import ResourceList
 from rspub.core.executors import Executor, SitemapData, ExecutorEvent
 from rspub.core.rs_enum import Capability
 from rspub.util import defaults
 
-from omtdrspub.elastic.elastic_utils import ElasticResourceDoc
+from omtdrspub.elastic.elastic_utils import ElasticResourceDoc, es_page_generator, es_get_instance
 
 MAX_RESULT_WINDOW = 10000
 
@@ -101,12 +100,12 @@ class ElasticResourceListExecutor(Executor):
                 ordinal += 1
                 doc_end = defaults.w3c_now()
                 resourcelist.md_completed = doc_end
-                #if ordinal == 0:
-                    # if we have a single doc, set ordinal to -1 so that the finish_sitemap will not append the
-                    # ordinal to the filename
-                    #ordinal = -1
-                    #print("Generating resourcelist")
-                #else:
+                # if ordinal == 0:
+                # if we have a single doc, set ordinal to -1 so that the finish_sitemap will not append the
+                # ordinal to the filename
+                # ordinal = -1
+                # print("Generating resourcelist")
+                # else:
                 print("Generating resourcelist #:" + str(ordinal))
                 sitemap_data = self.finish_sitemap(ordinal, resourcelist, doc_start=doc_start, doc_end=doc_end)
                 print("Finish")
@@ -122,15 +121,16 @@ class ElasticResourceListExecutor(Executor):
                 for e_hit in e_page:
                     e_source = e_hit['_source']
                     e_doc = ElasticResourceDoc(e_hit['_id'], e_source['rel_path'], e_source['length'], e_source['md5'],
-                                               e_source['mime'], e_source['lastmod'], e_source['res_set'], e_source['res_type'], e_source['ln'])
+                                               e_source['mime'], e_source['lastmod'], e_source['res_set'],
+                                               e_source['res_type'], e_source['ln'])
                     count += 1
-                    #path = os.path.relpath(file, self.para.resource_dir)
-                    #uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(path))
+                    # path = os.path.relpath(file, self.para.resource_dir)
+                    # uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(path))
                     uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(e_doc.rel_path))
                     if e_doc.ln:
                         for link in e_doc.ln:
-                            #link_path = os.path.relpath(link['href'], self.para.resource_dir)
-                            #link_uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(link_path))
+                            # link_path = os.path.relpath(link['href'], self.para.resource_dir)
+                            # link_uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(link_path))
                             link_uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(link['href']))
                             link['href'] = link_uri
 
@@ -148,57 +148,22 @@ class ElasticResourceListExecutor(Executor):
     def elastic_page_generator(self) -> iter:
 
         def generator() -> iter:
-            es = Elasticsearch([{"host": self.para.elastic_host, "port": self.para.elastic_port}])
-            result_size = self.para.max_items_in_list
-            c_iter = 0
-            n_iter = 1
-            # index.max_result_window in Elasticsearch controls the max number of results returned from a query.
-            # we can either increase it to 50k in order to match the sitemaps pagination requirements or not
-            # in the latter case, we have to bulk the number of items that we want to put into each resourcelist chunk
-            if self.para.max_items_in_list > MAX_RESULT_WINDOW:
-                n = self.para.max_items_in_list / MAX_RESULT_WINDOW
-                n_iter = int(n)
-                result_size = MAX_RESULT_WINDOW
-
             query = {"query":
                         {"bool":
-                            {"must":[
-                                 {"term":
-                                      {"res_set": self.para.res_set}
-                                  },
+                            {"must": [
+                                {"term":
+                                     {"res_set": self.para.res_set}
+                                 },
 
-                                 {"term":
-                                      {"res_type": self.para.res_type}
-                                  }]
-                             }
+                                {"term":
+                                     {"res_type": self.para.res_type}
+                                 }]
+                            }
                         }
                     }
 
-            page = es.search(index=self.para.elastic_index, doc_type=self.para.elastic_resource_type, scroll='2m', size=result_size,
-                             body=query)
-            sid = page['_scroll_id']
-            # total_size = page['hits']['total']
-            scroll_size = len(page['hits']['hits'])
-            bulk = page['hits']['hits']
-            c_iter += 1
-            # if c_iter and n_iter control the number of iteration we need to perform in order to yield a bulk of
-            #  (at most) self.para.max_items_in_list
-            if c_iter >= n_iter or scroll_size < result_size:
-                c_iter = 0
-                yield bulk
-                bulk = []
-            while scroll_size > 0:
-                page = es.scroll(scroll_id=sid, scroll='2m')
-                # Update the scroll ID
-                sid = page['_scroll_id']
-                # Get the number of results that we returned in the last scroll
-                scroll_size = len(page['hits']['hits'])
-                bulk.extend(page['hits']['hits'])
-                c_iter += 1
-                if c_iter >= n_iter or scroll_size < result_size:
-                    c_iter = 0
-                    yield bulk
-                    bulk = []
+            return es_page_generator(es_get_instance(self.para.elastic_host, self.para.elastic_port),
+                                    self.para.elastic_index, self.para.elastic_resource_type, query,
+                                    self.para.max_items_in_list, MAX_RESULT_WINDOW)
 
         return generator
-

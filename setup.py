@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='omtd-resync-elastic',
+    name='omtd-rspub-elastic',
     version=0.1,
     packages=['omtdrspub.elastic'],
     license='Creative Commons Attribution-Noncommercial-Share Alike license',
