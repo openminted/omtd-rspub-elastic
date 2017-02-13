@@ -34,10 +34,10 @@ class ElasticResourceSync(ResourceSync, ElasticRsParameters):
 
         if executor:
             executor.register(*self.observers)
-            executor.execute()
+            result = executor.execute()
         else:
             raise NotImplementedError("Strategy not implemented: %s" % self.strategy)
-
+        return result
         # set a timestamp
         #if self.is_saving_sitemaps:
         #    self.last_execution = executor.date_start_processing

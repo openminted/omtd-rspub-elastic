@@ -8,6 +8,7 @@ from rspub.core.executors import Executor, SitemapData, ExecutorEvent
 from rspub.core.rs_enum import Capability
 from rspub.util import defaults
 
+from omtdrspub.elastic.elastic_utils import ElasticResourceDoc
 
 MAX_RESULT_WINDOW = 10000
 
@@ -34,6 +35,7 @@ class ElasticResourceListExecutor(Executor):
 
         self.observers_inform(self, ExecutorEvent.execution_end, date_end_processing=self.date_end_processing,
                               new_sitemaps=sitemap_data_iter)
+        return sitemap_data_iter
 
     def prepare_metadata_dir(self):
         if self.para.is_saving_sitemaps:
@@ -200,51 +202,3 @@ class ElasticResourceListExecutor(Executor):
 
         return generator
 
-
-class ElasticResourceDoc(object):
-    def __init__(self, elastic_id, rel_path, length, md5, mime, time, res_set, res_type, ln):
-        self._elastic_id = elastic_id
-        self._rel_path = rel_path
-        self._length = length
-        self._md5 = md5
-        self._mime = mime
-        self._time = time
-        self._res_set = res_set
-        self._res_type = res_type
-        self._ln = ln
-
-    @property
-    def elastic_id(self):
-        return self.elastic_id
-
-    @property
-    def rel_path(self):
-        return self._rel_path
-
-    @property
-    def length(self):
-        return self._length
-
-    @property
-    def md5(self):
-        return self._md5
-
-    @property
-    def mime(self):
-        return self._mime
-
-    @property
-    def time(self):
-        return self._time
-
-    @property
-    def res_set(self):
-        return self._res_set
-
-    @property
-    def res_type(self):
-        return self._res_type
-
-    @property
-    def ln(self):
-        return self._ln

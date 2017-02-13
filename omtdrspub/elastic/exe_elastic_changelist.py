@@ -16,6 +16,7 @@ from rspub.core.rs_enum import Capability
 from rspub.util import defaults
 
 from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
+from omtdrspub.elastic.elastic_utils import ElasticChangeDoc
 
 MAX_RESULT_WINDOW = 10000
 
@@ -40,6 +41,7 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
 
         self.observers_inform(self, ExecutorEvent.execution_end, date_end_processing=self.date_end_processing,
                               new_sitemaps=sitemap_data_iter)
+        return sitemap_data_iter
 
     def generate_rs_documents(self, filenames: iter=None) -> [SitemapData]:
         pass
@@ -262,97 +264,6 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                     bulk = []
 
         return generator
-
-
-class NewChangeListExecutor(ElasticChangeListExecutor):
-    """
-    :samp:`Implements the new changelist strategy`
-
-    A :class:`NewChangeListExecutor` creates new changelists every time the executor runs (and is_saving_sitemaps).
-    If there are previous changelists that are not closed (md:until is not set) this executor will close
-    those previous changelists by setting their md:until value to now (start_of_processing)
-    """
-    def generate_rs_documents(self, filenames: iter=None):
-        self.update_previous_state()
-        if len(self.changelist_files) == 0:
-            self.date_changelist_from = self.date_resourcelist_completed
-        else:
-            self.date_changelist_from = self.date_start_processing
-
-        sitemap_data_iter = []
-        generator = self.changelist_generator()
-        for sitemap_data, changelist in generator():
-            sitemap_data_iter.append(sitemap_data)
-
-        return sitemap_data_iter
-
-    def post_process_documents(self, sitemap_data_iter: iter):
-        # change md:until value of older changelists - if we created new changelists.
-        # self.changelist_files was globed before new documents were generated (self.update_previous_state).
-        if len(sitemap_data_iter) > 0 and self.para.is_saving_sitemaps:
-            for filename in self.changelist_files:
-                changelist = self.read_sitemap(filename, ChangeList())
-                if changelist.md_until is None:
-                    changelist.md_until = self.date_start_processing
-                    self.save_sitemap(changelist, filename)
-
-
-class IncrementalChangeListExecutor(ElasticChangeListExecutor):
-    """
-    :samp:`Implements the incremental changelist strategy`
-
-    An :class:`IncrementalChangeListExecutor` adds changes to an already existing changelist every time
-    the executor runs
-    (and is_saving_sitemaps).
-    """
-    def generate_rs_documents(self, filenames: iter=None):
-        self.update_previous_state()
-        self.date_changelist_from = self.date_resourcelist_completed
-        changelist = None
-        if len(self.changelist_files) > 0:
-            changelist = self.read_sitemap(self.changelist_files[-1], ChangeList())
-
-        sitemap_data_iter = []
-        generator = self.changelist_generator()
-
-        for sitemap_data, changelist in generator(changelist=changelist):
-            sitemap_data_iter.append(sitemap_data)
-
-        return sitemap_data_iter
-
-
-class ElasticChangeDoc(object):
-    def __init__(self, elastic_id, rel_path, lastmod, change, res_set, res_type):
-        self._elastic_id = elastic_id
-        self._rel_path = rel_path
-        self._lastmod = lastmod
-        self._change = change
-        self._res_set = res_set
-        self._res_type = res_type
-
-    @property
-    def elastic_id(self):
-        return self.elastic_id
-
-    @property
-    def rel_path(self):
-        return self._rel_path
-
-    @property
-    def lastmod(self):
-        return self._lastmod
-
-    @property
-    def change(self):
-        return self._change
-
-    @property
-    def res_set(self):
-        return self._res_set
-
-    @property
-    def res_type(self):
-        return self._res_type
 
 
 class ElasticNewChangeListExecutor(ElasticChangeListExecutor):

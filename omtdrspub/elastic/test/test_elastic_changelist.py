@@ -61,7 +61,7 @@ def get_changes_from_es_docs(docs):
 
     # new_resources
     for doc in docs:
-        change = Resource(uri=compose_uri(doc.file_path), change=doc.change, lastmod=doc.lastmod)
+        change = Resource(uri=compose_uri(doc.rel_path), change=doc.change, lastmod=doc.lastmod)
         new_resources.append(change)
     return new_resources
 
