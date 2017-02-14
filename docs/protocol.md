@@ -3,7 +3,7 @@ DIT-ES ResourceSync protocol
 
 ## General description
 
-The DIT will continuously update a ‘omtd-resourcesync’ index into ES. This index will contain two different types:
+The DIT (the harvesting component of the Data Interoperability Toolkit - https://github.com/openminted/omtd-publisher-connector-harvester) will continuously update a ‘omtd-resourcesync’ index into ES. This index will contain two different types:
 
 - resource: keeps track of the current state of the resources to be sync
 - change: logs changes of the resources to by sync
