@@ -1,4 +1,4 @@
-= ResourceSync server
+= ResourceSync source
 
 === Overview
 ResourceSync is a synchronization framework for the web consisting of various

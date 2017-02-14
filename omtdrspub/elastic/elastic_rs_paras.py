@@ -5,6 +5,7 @@ import validators
 from rspub.core.rs_paras import RsParameters, WELL_KNOWN_URL
 from rspub.util import defaults
 
+
 class ElasticRsParameters(RsParameters):
 
     def __init__(self, **kwargs):
