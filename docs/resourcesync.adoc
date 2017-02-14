@@ -7,9 +7,7 @@ server's evolving resources. It is based on the Sitemaps protocol, extending
 its capabilities in order to keep track of resources' state.
 
 The purpose of our work is to develop a fully compliant, reliable and scalable
-implementation of a ResourceSync server that can allow the Data Interoperability
-Toolkit to expose metadata and full-text resources downloaded from publishers
-overtime.
+implementation of a ResourceSync server. While our use case is motivated by the need to continuously aggregate the metadata and full text content of academic papers, our solution should be applicable to other use cases too. 
 
 === Requirements
 . Maximizing response time to resync requests
