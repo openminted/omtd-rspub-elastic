@@ -197,33 +197,36 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
         changes_since = self.para.changes_since if hasattr(self.para, 'changes_since') \
             else self.date_resourcelist_completed
 
-        query = {
-            "query": {
-                "bool": {
-                    "must": [
-                        {
-                            "term": {"res_set": self.para.res_set}
-                        },
-                        {
-                            "term": {"res_type": self.para.res_type}
-                        },
-                        {
-                            "range": {"lastmod": {"gte": changes_since}}
-                        }
-                    ]
-                }
-            },
-            "sort": [
-                {
-                    "_timestamp": {
-                        "order": "asc"
+        def generator() -> iter:
+            query = {
+                "query": {
+                    "bool": {
+                        "must": [
+                            {
+                                "term": {"res_set": self.para.res_set}
+                            },
+                            {
+                                "term": {"res_type": self.para.res_type}
+                            },
+                            {
+                                "range": {"lastmod": {"gte": changes_since}}
+                            }
+                        ]
                     }
-                }
-            ]
-        }
+                },
+                "sort": [
+                    {
+                        "_timestamp": {
+                            "order": "asc"
+                        }
+                    }
+                ]
+            }
 
-        return es_page_generator(es_get_instance(self.para.elastic_host, self.para.elastic_port),
-                                 self.para.elastic_index, self.para.elastic_change_type, query, self.para.max_items_in_list, MAX_RESULT_WINDOW)
+            return es_page_generator(es_get_instance(self.para.elastic_host, self.para.elastic_port),
+                                     self.para.elastic_index, self.para.elastic_change_type, query, self.para.max_items_in_list, MAX_RESULT_WINDOW)
+
+        return generator
 
 
 class ElasticNewChangeListExecutor(ElasticChangeListExecutor):
