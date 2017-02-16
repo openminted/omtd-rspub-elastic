@@ -1,8 +1,10 @@
 import os
+from urllib.parse import urljoin
 
 import yaml
 from elasticsearch import Elasticsearch
 from resync.sitemap import RS_NS, SitemapParseError, SITEMAP_NS, SitemapIndexError
+from rspub.util import defaults
 
 from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
 
@@ -109,9 +111,9 @@ def es_delete_index(es, index):
     return es.indices.delete(index=index, ignore=404)
 
 
-def es_put_resource(es, index, resource_type, res_id, rel_path, res_set, res_type, length, md5, mime, lastmod, ln):
+def es_put_resource(es, index, resource_type, res_id, location, res_set, res_type, length, md5, mime, lastmod, ln):
     doc = {
-        "rel_path": rel_path,
+        "location": location,
         "length": length,
         "md5": md5,
         "mime": mime,
@@ -124,9 +126,9 @@ def es_put_resource(es, index, resource_type, res_id, rel_path, res_set, res_typ
                     id=res_id)
 
 
-def es_put_change(es, index, resource_type, rel_path, res_set, res_type, change, lastmod):
+def es_put_change(es, index, resource_type, location, res_set, res_type, change, lastmod):
     doc = {
-        "rel_path": rel_path,
+        "location": location,
         "lastmod": lastmod,
         "change": change,
         "res_set": res_set,
@@ -138,6 +140,18 @@ def es_put_change(es, index, resource_type, rel_path, res_set, res_type, change,
 
 def es_refresh_index(es, index):
     return es.indices.refresh(index=index)
+
+
+def es_uri_from_location(loc, para_url_prefix, para_res_root_dir):
+    uri = None
+    if loc['type'] == 'url':
+        uri = loc['value']
+    elif loc['type'] == 'rel_path':
+        uri = urljoin(para_url_prefix, defaults.sanitize_url_path(loc['value']))
+    elif loc['type'] == 'abs_path':
+        path = os.path.relpath(loc['value'], para_res_root_dir)
+        uri = para_url_prefix + defaults.sanitize_url_path(path)
+    return uri
 
 
 def parse_yaml_params(config_file):
@@ -193,9 +207,9 @@ def es_page_generator(es, es_index, es_type, query, max_items_in_list, max_resul
 
 
 class ElasticResourceDoc(object):
-    def __init__(self, elastic_id, rel_path, length, md5, mime, time, res_set, res_type, ln):
+    def __init__(self, elastic_id, location, length, md5, mime, time, res_set, res_type, ln):
         self._elastic_id = elastic_id
-        self._rel_path = rel_path
+        self._location = location
         self._length = length
         self._md5 = md5
         self._mime = mime
@@ -209,8 +223,8 @@ class ElasticResourceDoc(object):
         return self.elastic_id
 
     @property
-    def rel_path(self):
-        return self._rel_path
+    def location(self):
+        return self._location
 
     @property
     def length(self):
@@ -242,9 +256,9 @@ class ElasticResourceDoc(object):
 
 
 class ElasticChangeDoc(object):
-    def __init__(self, elastic_id, rel_path, lastmod, change, res_set, res_type):
+    def __init__(self, elastic_id, location, lastmod, change, res_set, res_type):
         self._elastic_id = elastic_id
-        self._rel_path = rel_path
+        self._location = location
         self._lastmod = lastmod
         self._change = change
         self._res_set = res_set
@@ -255,8 +269,8 @@ class ElasticChangeDoc(object):
         return self.elastic_id
 
     @property
-    def rel_path(self):
-        return self._rel_path
+    def location(self):
+        return self._location
 
     @property
     def lastmod(self):

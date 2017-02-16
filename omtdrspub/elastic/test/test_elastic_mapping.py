@@ -8,9 +8,18 @@ def elastic_mapping(resource_type, change_type):
                     "store": "yes",
                 },
                 "properties": {
-                    "rel_path": {
-                        "type": "string",
-                        "index": "not_analyzed"
+                    "location": {
+                        "type": "nested",
+                        "properties": {
+                            "value": {
+                                "type": "string",
+                                "index": "not_analyzed"
+                            },
+                            "type": {
+                                "type": "string",
+                                "index": "not_analyzed"
+                            },
+                        }
                     },
                     "length": {
                         "type": "integer",
@@ -44,8 +53,17 @@ def elastic_mapping(resource_type, change_type):
                                 "index": "not_analyzed"
                             },
                             "href": {
-                                "type": "string",
-                                "index": "not_analyzed"
+                                "type": "nested",
+                                "properties": {
+                                    "value": {
+                                        "type": "string",
+                                        "index": "not_analyzed"
+                                    },
+                                    "type": {
+                                        "type": "string",
+                                        "index": "not_analyzed"
+                                    },
+                                }
                             },
                             "mime": {
                                 "type": "string",
@@ -62,9 +80,18 @@ def elastic_mapping(resource_type, change_type):
                     "store": "yes"
                 },
                 "properties": {
-                    "rel_path": {
-                        "type": "string",
-                        "index": "not_analyzed"
+                    "location": {
+                        "type": "nested",
+                        "properties": {
+                            "value": {
+                                "type": "string",
+                                "index": "not_analyzed"
+                            },
+                            "type": {
+                                "type": "string",
+                                "index": "not_analyzed"
+                            },
+                        }
                     },
                     "lastmod": {
                         "type": "date",

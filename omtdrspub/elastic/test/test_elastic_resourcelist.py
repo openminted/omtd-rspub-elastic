@@ -33,14 +33,14 @@ class TestElasticResourceList(unittest.TestCase):
         es_refresh_index(cls.es, index=cls.config.elastic_index)
 
         print(es_put_resource(cls.es, cls.config.elastic_index, cls.config.elastic_resource_type,
-                        "file1", "/test/path/file1.txt", "elsevier",
+                        "file1", {"type": "abs_path", "value": "/test/path/file1.txt"}, "elsevier",
                               "metadata", 5, "md5", "text/plain", "2017-02-03T12:25:00Z",
-                              [{"href": "file1.pdf", "rel": "describes", "mime": "application/pdf"}]))
+                              [{"href": {"value": "file1.pdf", "type": "rel_path"}, "rel": "describes", "mime": "application/pdf"}]))
         print(es_put_resource(cls.es, cls.config.elastic_index,
                         cls.config.elastic_resource_type,
-                        "file2", "/test/path/file2.txt", "elsevier",
+                        "file2", {"type": "abs_path", "value": "/test/path/file2.txt"}, "elsevier",
                               "metadata", 6, "md5", "text/plain", "2017-02-03T12:27:00Z",
-                              [{"href": "file2.pdf",    "rel": "describes", "mime": "application/pdf"}]))
+                              [{"href": {"value": "file2.pdf", "type": "rel_path"}, "rel": "describes", "mime": "application/pdf"}]))
 
         es_refresh_index(cls.es, index=cls.config.elastic_index)
 

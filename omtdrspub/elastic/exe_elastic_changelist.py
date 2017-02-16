@@ -15,7 +15,8 @@ from rspub.core.rs_enum import Capability
 from rspub.util import defaults
 
 from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
-from omtdrspub.elastic.elastic_utils import ElasticChangeDoc, es_page_generator, es_get_instance, parse_xml_without_urls
+from omtdrspub.elastic.elastic_utils import ElasticChangeDoc, es_page_generator, es_get_instance, parse_xml_without_urls, \
+    es_uri_from_location
 
 MAX_RESULT_WINDOW = 10000
 
@@ -181,11 +182,14 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
             for e_page in elastic_page_generator():
                 for e_hit in e_page:
                     e_source = e_hit['_source']
-                    e_doc = ElasticChangeDoc(e_hit['_id'], e_source['rel_path'], e_source['lastmod'],
+                    e_doc = ElasticChangeDoc(e_hit['_id'], e_source['location'], e_source['lastmod'],
                                              e_source['change'], e_source['res_set'], e_source['res_type'])
                     count += 1
                     # path = os.path.relpath(file, self.para.resource_dir)
-                    uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(e_doc.rel_path)) 
+                    #uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(e_doc.rel_path))
+
+                    uri = es_uri_from_location(loc=e_doc.location, para_url_prefix=self.para.url_prefix,
+                                               para_res_root_dir=self.para.res_root_dir)
                     resource = Resource(uri=uri,
                                         lastmod=e_doc.lastmod,
                                         change=e_doc.change)
