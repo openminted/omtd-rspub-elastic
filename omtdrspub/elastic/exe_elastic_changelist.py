@@ -15,7 +15,7 @@ from rspub.core.rs_enum import Capability
 from rspub.util import defaults
 
 from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
-from omtdrspub.elastic.elastic_utils import ElasticChangeDoc, es_page_generator, es_get_instance
+from omtdrspub.elastic.elastic_utils import ElasticChangeDoc, es_page_generator, es_get_instance, parse_xml_without_urls
 
 MAX_RESULT_WINDOW = 10000
 
@@ -91,7 +91,9 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                 resourcelist = ResourceList()
                 with open(rl_file_name, "r", encoding="utf-8") as rl_file:
                     sm = Sitemap()
-                    sm.parse_xml(rl_file, resources=resourcelist)
+                    # too slow
+                    # sm.parse_xml(rl_file, resources=resourcelist)
+                    parse_xml_without_urls(sm, fh=rl_file, resources=resourcelist)
 
                 self.date_resourcelist_completed = resourcelist.md_completed
                 if self.date_resourcelist_completed is None:
