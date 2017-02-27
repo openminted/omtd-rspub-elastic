@@ -4,7 +4,6 @@
 import os
 from abc import ABCMeta
 from glob import glob
-from urllib.parse import urljoin
 
 from resync import ChangeList
 from resync import Resource
@@ -16,7 +15,7 @@ from rspub.util import defaults
 
 from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
 from omtdrspub.elastic.elastic_utils import ElasticChangeDoc, es_page_generator, es_get_instance, parse_xml_without_urls, \
-    es_uri_from_location
+    es_uri_from_location, es_delete_all_documents
 
 MAX_RESULT_WINDOW = 10000
 
@@ -127,8 +126,9 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
 
             created = [r for r in new_changes.values() if r.change == "created"]
             updated = [r for r in new_changes.values() if r.change == "updated"]
-            deleted = [r for r in new_changes.values() if r.change == "deleted" and
-                       (True if (r.uri in prev_changes and prev_changes[r.uri].change != "deleted") else False)]
+            deleted = [r for r in new_changes.values() if r.change == "deleted"]
+            # deleted = [r for r in new_changes.values() if r.change == "deleted" and
+            #           (True if ((r.uri in prev_changes and prev_changes[r.uri].change != "deleted") or r.uri not in prev_changes) else False)]
 
             num_created = len(created)
             num_updated = len(updated)
@@ -137,6 +137,9 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
             self.observers_inform(self, ExecutorEvent.found_changes, created=num_created, updated=num_updated,
                                   deleted=num_deleted)
             all_changes = {"created": created, "updated": updated, "deleted": deleted}
+
+            es_delete_all_documents(es=es_get_instance(self.para.elastic_host, self.para.elastic_port),
+                                    index=self.para.elastic_index, doc_type=self.para.elastic_change_type)
 
             ordinal = self.find_ordinal(Capability.changelist.name)
 
@@ -183,7 +186,7 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                 for e_hit in e_page:
                     e_source = e_hit['_source']
                     e_doc = ElasticChangeDoc(e_hit['_id'], e_source['location'], e_source['lastmod'],
-                                             e_source['change'], e_source['res_set'], e_source['res_type'])
+                                             e_source['change'], e_source['res_set'])
                     count += 1
                     # path = os.path.relpath(file, self.para.resource_dir)
                     #uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(e_doc.rel_path))
@@ -200,8 +203,8 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
         return generator
 
     def elastic_page_generator(self) -> iter:
-        changes_since = self.para.changes_since if hasattr(self.para, 'changes_since') \
-            else self.date_resourcelist_completed
+        #changes_since = self.para.changes_since if hasattr(self.para, 'changes_since') \
+        #    else self.date_resourcelist_completed
 
         def generator() -> iter:
             query = {
@@ -210,12 +213,6 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                         "must": [
                             {
                                 "term": {"res_set": self.para.res_set}
-                            },
-                            {
-                                "term": {"res_type": self.para.res_type}
-                            },
-                            {
-                                "range": {"lastmod": {"gte": changes_since}}
                             }
                         ]
                     }

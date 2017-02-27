@@ -32,25 +32,23 @@ class TestElasticResourceList(unittest.TestCase):
                         mapping=test_elastic_mapping.elastic_mapping(cls.config.elastic_resource_type, cls.config.elastic_change_type))
         es_refresh_index(cls.es, index=cls.config.elastic_index)
 
-        print(es_put_resource(cls.es, cls.config.elastic_index, cls.config.elastic_resource_type,
+        es_put_resource(cls.es, cls.config.elastic_index, cls.config.elastic_resource_type,
                         "file1", {"type": "abs_path", "value": "/test/path/file1.txt"}, "elsevier",
-                              "metadata", 5, "md5", "text/plain", "2017-02-03T12:25:00Z",
-                              [{"href": {"value": "file1.pdf", "type": "rel_path"}, "rel": "describes", "mime": "application/pdf"}]))
-        print(es_put_resource(cls.es, cls.config.elastic_index,
+                              5, "md5", "text/plain", "2017-02-03T12:25:00Z",
+                              [{"href": {"value": "file1.pdf", "type": "rel_path"}, "rel": "describes", "mime": "application/pdf"}])
+        es_put_resource(cls.es, cls.config.elastic_index,
                         cls.config.elastic_resource_type,
                         "file2", {"type": "abs_path", "value": "/test/path/file2.txt"}, "elsevier",
-                              "metadata", 6, "md5", "text/plain", "2017-02-03T12:27:00Z",
-                              [{"href": {"value": "file2.pdf", "type": "rel_path"}, "rel": "describes", "mime": "application/pdf"}]))
+                              6, "md5", "text/plain", "2017-02-03T12:27:00Z",
+                              [{"href": {"value": "file2.pdf", "type": "rel_path"}, "rel": "describes", "mime": "application/pdf"}])
 
         es_refresh_index(cls.es, index=cls.config.elastic_index)
 
     @classmethod
     def tearDownClass(cls):
         es_delete_index(cls.es, index=cls.config.elastic_index)
-        print("Remove index")
         tmp_dir = cls.config.resource_dir
         shutil.rmtree(path=tmp_dir)
-        print("Cleanup folder")
 
     def test_elastic_resourcelist(self):
         eg = ElasticGenerator(config=self.config)

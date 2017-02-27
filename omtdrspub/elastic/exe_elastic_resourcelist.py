@@ -1,6 +1,7 @@
 import os
 from urllib.parse import urljoin
 
+import logging
 from resync import Resource
 from resync import ResourceList
 from rspub.core.executors import Executor, SitemapData, ExecutorEvent
@@ -10,6 +11,8 @@ from rspub.util import defaults
 from omtdrspub.elastic.elastic_utils import ElasticResourceDoc, es_page_generator, es_get_instance, es_uri_from_location
 
 MAX_RESULT_WINDOW = 10000
+
+LOG = logging.getLogger(__name__)
 
 
 class ElasticResourceListExecutor(Executor):
@@ -89,9 +92,9 @@ class ElasticResourceListExecutor(Executor):
                     ordinal += 1
                     doc_end = defaults.w3c_now()
                     resourcelist.md_completed = doc_end
-                    print("Generating resourcelist #:" + str(ordinal))
+                    LOG.info("Generating resourcelist #:" + str(ordinal))
                     sitemap_data = self.finish_sitemap(ordinal, resourcelist, doc_start=doc_start, doc_end=doc_end)
-                    print("Finish")
+                    LOG.info("Finish")
                     yield sitemap_data, resourcelist
                     resourcelist = None
 
@@ -106,9 +109,9 @@ class ElasticResourceListExecutor(Executor):
                 # ordinal = -1
                 # print("Generating resourcelist")
                 # else:
-                print("Generating resourcelist #:" + str(ordinal))
+                LOG.info("Generating resourcelist #:" + str(ordinal))
                 sitemap_data = self.finish_sitemap(ordinal, resourcelist, doc_start=doc_start, doc_end=doc_end)
-                print("Finish")
+                LOG.info("Resource list # " + str(ordinal) + " successfully generated")
                 yield sitemap_data, resourcelist
 
         return generator
@@ -121,8 +124,7 @@ class ElasticResourceListExecutor(Executor):
                 for e_hit in e_page:
                     e_source = e_hit['_source']
                     e_doc = ElasticResourceDoc(e_hit['_id'], e_source['location'], e_source['length'], e_source['md5'],
-                                               e_source['mime'], e_source['lastmod'], e_source['res_set'],
-                                               e_source['res_type'], e_source['ln'])
+                                               e_source['mime'], e_source['lastmod'], e_source['res_set'], e_source['ln'])
                     count += 1
                     # path = os.path.relpath(file, self.para.resource_dir)
                     # uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(path))
@@ -156,10 +158,6 @@ class ElasticResourceListExecutor(Executor):
                             {"must": [
                                 {"term":
                                      {"res_set": self.para.res_set}
-                                 },
-
-                                {"term":
-                                     {"res_type": self.para.res_type}
                                  }]
                             }
                         }

@@ -40,10 +40,6 @@ def elastic_mapping(resource_type, change_type):
                         "type": "string",
                         "index": "not_analyzed"
                     },
-                    "res_type": {
-                        "type": "string",
-                        "index": "not_analyzed"
-                    },
                     "ln": {
                         "type": "nested",
                         "index_name": "link",
@@ -101,10 +97,6 @@ def elastic_mapping(resource_type, change_type):
                         "index": "not_analyzed"
                     },
                     "res_set": {
-                        "type": "string",
-                        "index": "not_analyzed"
-                    },
-                    "res_type": {
                         "type": "string",
                         "index": "not_analyzed"
                     }
