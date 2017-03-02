@@ -31,6 +31,8 @@ regenerated after a given amount of detected changes
 ElasticSearch, in a way that a ChangeList related to a given period of time
 will be generated taking into account the events occurred in that time interval.
  ChangeList caching will be implemented as well.
+* Every time a new ResourceList is generated, all the changes stored into the "change"
+ES type will be erased or marked as "fetched"
 * Periodically, a new ResourceList will be generated and the current ChangeList
 will be “closed”, therefore a new ChangeList will be initialized. There is no
 indication for the appropriate time interval in the ResourceSync specification,

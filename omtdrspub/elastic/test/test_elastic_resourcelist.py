@@ -29,15 +29,15 @@ class TestElasticResourceList(unittest.TestCase):
         cls.es = es_get_instance(cls.config.elastic_host, cls.config.elastic_port)
         es_delete_index(cls.es, index=cls.config.elastic_index)
         es_create_index(cls.es, index=cls.config.elastic_index,
-                        mapping=test_elastic_mapping.elastic_mapping(cls.config.elastic_resource_type, cls.config.elastic_change_type))
+                        mapping=test_elastic_mapping.elastic_mapping(cls.config.elastic_resource_doc_type,
+                                                                     cls.config.elastic_change_doc_type))
         es_refresh_index(cls.es, index=cls.config.elastic_index)
 
-        es_put_resource(cls.es, cls.config.elastic_index, cls.config.elastic_resource_type,
+        es_put_resource(cls.es, cls.config.elastic_index, cls.config.elastic_resource_doc_type,
                         "file1", {"type": "abs_path", "value": "/test/path/file1.txt"}, "elsevier",
                               5, "md5", "text/plain", "2017-02-03T12:25:00Z",
                               [{"href": {"value": "file1.pdf", "type": "rel_path"}, "rel": "describes", "mime": "application/pdf"}])
-        es_put_resource(cls.es, cls.config.elastic_index,
-                        cls.config.elastic_resource_type,
+        es_put_resource(cls.es, cls.config.elastic_index, cls.config.elastic_resource_doc_type,
                         "file2", {"type": "abs_path", "value": "/test/path/file2.txt"}, "elsevier",
                               6, "md5", "text/plain", "2017-02-03T12:27:00Z",
                               [{"href": {"value": "file2.pdf", "type": "rel_path"}, "rel": "describes", "mime": "application/pdf"}])

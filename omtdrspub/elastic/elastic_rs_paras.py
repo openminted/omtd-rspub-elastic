@@ -10,13 +10,13 @@ class ElasticRsParameters(RsParameters):
 
     def __init__(self, **kwargs):
         super(ElasticRsParameters, self).__init__(**kwargs)
-        self.res_set = kwargs['res_set']
+        self.resource_set = kwargs['resource_set']
         self.res_root_dir = kwargs['res_root_dir']
         self.elastic_host = kwargs['elastic_host']
         self.elastic_port = kwargs['elastic_port']
         self.elastic_index = kwargs['elastic_index']
-        self.elastic_resource_type = kwargs['elastic_resource_type']
-        self.elastic_change_type = kwargs['elastic_change_type']
+        self.elastic_resource_doc_type = kwargs['elastic_resource_doc_type']
+        self.elastic_change_doc_type = kwargs['elastic_change_doc_type']
 
     # def abs_metadata_dir(self) -> str:
     #     """

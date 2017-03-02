@@ -99,6 +99,7 @@ def parse_xml_without_urls(sm, fh=None, etree=None, resources=None, capability=N
     # return the resource container object
     return resources
 
+
 def es_get_instance(host, port):
     return Elasticsearch([{"host": host, "port": port}])
 
@@ -118,11 +119,10 @@ def es_put_resource(es, index, resource_type, res_id, location, res_set, length,
         "md5": md5,
         "mime": mime,
         "lastmod": lastmod,
-        "res_set": res_set,
+        "resource_set": res_set,
         "ln": ln
     }
-    return es.index(index=index, doc_type=resource_type, body=doc,
-                    id=res_id)
+    return es.index(index=index, doc_type=resource_type, body=doc)
 
 
 def es_put_change(es, index, resource_type, location, res_set, change, lastmod):
@@ -130,7 +130,7 @@ def es_put_change(es, index, resource_type, location, res_set, change, lastmod):
         "location": location,
         "lastmod": lastmod,
         "change": change,
-        "res_set": res_set,
+        "resource_set": res_set,
     }
 
     return es.index(index=index, doc_type=resource_type, body=doc)
@@ -144,6 +144,7 @@ def es_delete_all_documents(es, index, doc_type):
             }
         }
     es.delete_by_query(index=index, doc_type=doc_type, body=query)
+    es_refresh_index(es, index=index)
 
 
 def es_refresh_index(es, index):

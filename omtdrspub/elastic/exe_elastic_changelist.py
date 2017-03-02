@@ -14,8 +14,9 @@ from rspub.core.rs_enum import Capability
 from rspub.util import defaults
 
 from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
-from omtdrspub.elastic.elastic_utils import ElasticChangeDoc, es_page_generator, es_get_instance, parse_xml_without_urls, \
-    es_uri_from_location, es_delete_all_documents
+from omtdrspub.elastic.elastic_utils import es_page_generator, es_get_instance, parse_xml_without_urls, \
+    es_delete_all_documents
+from omtdrspub.elastic.model.change_doc import ChangeDoc
 
 MAX_RESULT_WINDOW = 10000
 
@@ -139,7 +140,7 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
             all_changes = {"created": created, "updated": updated, "deleted": deleted}
 
             es_delete_all_documents(es=es_get_instance(self.para.elastic_host, self.para.elastic_port),
-                                    index=self.para.elastic_index, doc_type=self.para.elastic_change_type)
+                                    index=self.para.elastic_index, doc_type=self.para.elastic_change_doc_type)
 
             ordinal = self.find_ordinal(Capability.changelist.name)
 
@@ -159,7 +160,7 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                         changelist.md_from = self.date_changelist_from
 
                     r_change.change = kv[0] # type of change: created, updated or deleted
-                    r_change.md_datetime = self.date_start_processing
+                    # r_change.md_datetime = self.date_start_processing
                     changelist.add(r_change)
                     resource_count += 1
 
@@ -185,17 +186,19 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
             for e_page in elastic_page_generator():
                 for e_hit in e_page:
                     e_source = e_hit['_source']
-                    e_doc = ElasticChangeDoc(e_hit['_id'], e_source['location'], e_source['lastmod'],
-                                             e_source['change'], e_source['res_set'])
+                    # e_doc = ElasticChangeDoc(e_hit['_id'], e_source['location'], e_source['lastmod'],
+                    #                          e_source['change'], e_source['res_set'])
+                    e_doc = ChangeDoc.as_change_doc(e_source)
                     count += 1
                     # path = os.path.relpath(file, self.para.resource_dir)
                     #uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(e_doc.rel_path))
 
-                    uri = es_uri_from_location(loc=e_doc.location, para_url_prefix=self.para.url_prefix,
-                                               para_res_root_dir=self.para.res_root_dir)
+                    uri = e_doc.location.uri_from_path(para_url_prefix=self.para.url_prefix,
+                                                       para_res_root_dir=self.para.res_root_dir)
                     resource = Resource(uri=uri,
                                         lastmod=e_doc.lastmod,
-                                        change=e_doc.change)
+                                        change=e_doc.change,
+                                        md_datetime=e_doc.datetime)
                     yield count, resource
                     self.observers_inform(self, ExecutorEvent.created_resource, resource=resource,
                                           count=count)
@@ -212,7 +215,7 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                     "bool": {
                         "must": [
                             {
-                                "term": {"res_set": self.para.res_set}
+                                "term": {"resource_set": self.para.resource_set}
                             }
                         ]
                     }
@@ -227,7 +230,8 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
             }
 
             return es_page_generator(es_get_instance(self.para.elastic_host, self.para.elastic_port),
-                                     self.para.elastic_index, self.para.elastic_change_type, query, self.para.max_items_in_list, MAX_RESULT_WINDOW)
+                                     self.para.elastic_index, self.para.elastic_change_doc_type, query,
+                                     self.para.max_items_in_list, MAX_RESULT_WINDOW)
 
         return generator
 

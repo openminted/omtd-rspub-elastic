@@ -36,7 +36,7 @@ def elastic_mapping(resource_type, change_type):
                     "lastmod": {
                         "type": "date",
                     },
-                    "res_set": {
+                    "resource_set": {
                         "type": "string",
                         "index": "not_analyzed"
                     },
@@ -96,7 +96,7 @@ def elastic_mapping(resource_type, change_type):
                         "type": "string",
                         "index": "not_analyzed"
                     },
-                    "res_set": {
+                    "resource_set": {
                         "type": "string",
                         "index": "not_analyzed"
                     }

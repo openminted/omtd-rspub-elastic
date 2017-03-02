@@ -30,12 +30,11 @@ Here's the mapping for the resource type of the ‘omtd-resourcesync’ index:
 ```json
 {
   "resource": {
-    "_timestamp": {
-      "enabled": "true",
-      "format": "basic_date_time_no_millis",
-      "store": "yes"
-    },
     "properties": {
+      "resource_set": {
+        "type": "string",
+        "index": "not_analyzed"
+      },
       "location": {
         "type": "nested",
         "properties": {
@@ -62,24 +61,13 @@ Here's the mapping for the resource type of the ‘omtd-resourcesync’ index:
         "index": "not_analyzed"
       },
       "lastmod": {
-        "type": "date"
-      },
-      "res_set": {
-        "type": "string",
-        "index": "not_analyzed"
-      },
-      "res_type": {
-        "type": "string",
-        "index": "not_analyzed"
+        "type": "date",
+        "format": "basic_date_time_no_millis"
       },
       "ln": {
         "type": "nested",
         "index_name": "link",
         "properties": {
-          "rel": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
           "href": {
             "type": "nested",
             "properties": {
@@ -92,6 +80,10 @@ Here's the mapping for the resource type of the ‘omtd-resourcesync’ index:
                 "index":"not_analyzed"
               }
             }
+          },
+          "rel": {
+            "type": "string",
+            "index": "not_analyzed"
           },
           "mime": {
             "type": "string",
@@ -116,8 +108,6 @@ For each resource, the following fields will be filled out:
 - mime: mime type of the resource
 - lastmod: last modification time of the resource
 - capability list: the name of the capability list the resource will belong to
-- res_type: type of the resource. It may be useful to create different capability lists for different types of resources
-(i.e. /elsevier/metadata -- /elsevier/pdf)
 - ln: links to other resources, each one of them can have three fields
     - rel: relationships description (i.e. "describes", "described by")
     - href: link to the resource, similar to "location" (uri/abs_path/rel_path)
@@ -129,12 +119,11 @@ Here's the mapping for the change type:
 ```json
 {
   "change": {
-    "_timestamp": {
-        "enabled": "true",
-        "format": "basic_date_time_no_millis",
-        "store": "yes"
-    },
     "properties": {
+      "resource_set": {
+        "type": "string",
+        "index": "not_analyzed"
+      },
       "location": {
         "type": "nested",
         "properties": {
@@ -153,15 +142,12 @@ Here's the mapping for the change type:
         "index": "not_analyzed"
       },
       "lastmod": {
-        "type": "date"
+        "type": "date",
+        "format": "basic_date_time_no_millis"
       },
-      "res_set": {
-        "type": "string",
-        "index": "not_analyzed"
-      },
-      "res_type": {
-        "type": "string",
-        "index": "not_analyzed"
+      "datetime": {
+        "type": "date",
+        "format": "basic_date_time_no_millis"
       }
     }
   }
@@ -179,8 +165,10 @@ Here's the mapping for the change type:
     - deleted
 - lastmod: last modification time of the resource
 - capability list: the name of the capability list the resource will belong to
-- res_type: type of the resource. It may be useful to create different capability lists for different types of resources (i.e. /elsevier/metadata -- /elsevier/pdf)
 - ln: links to other resources, each one of them can have three fields
     - rel: relationships description (i.e. "describes", "described by")
     - href: link to the resource, similar to "location" (uri/abs_path/rel_path)
     - mime: mime type of the linked resource
+    
+Note: the current mapping will be extended with further metadata and updated according
+to new versions of the ResourceSync specification

@@ -6,7 +6,7 @@ from resync import ChangeList
 from resync import Resource
 from rspub.util import defaults
 
-from omtdrspub.elastic.exe_elastic_changelist import ElasticChangeDoc
+from omtdrspub.elastic.elastic_utils import ElasticChangeDoc
 
 res_dir = "/test/path/"
 prefix = "http://example.com"

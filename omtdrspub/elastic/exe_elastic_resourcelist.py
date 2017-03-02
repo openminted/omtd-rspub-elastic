@@ -9,6 +9,8 @@ from rspub.core.rs_enum import Capability
 from rspub.util import defaults
 
 from omtdrspub.elastic.elastic_utils import ElasticResourceDoc, es_page_generator, es_get_instance, es_uri_from_location
+from omtdrspub.elastic.model.location import Location
+from omtdrspub.elastic.model.resource_doc import ResourceDoc
 
 MAX_RESULT_WINDOW = 10000
 
@@ -123,27 +125,29 @@ class ElasticResourceListExecutor(Executor):
             for e_page in elastic_page_generator():
                 for e_hit in e_page:
                     e_source = e_hit['_source']
-                    e_doc = ElasticResourceDoc(e_hit['_id'], e_source['location'], e_source['length'], e_source['md5'],
-                                               e_source['mime'], e_source['lastmod'], e_source['res_set'], e_source['ln'])
+                    # e_doc = ElasticResourceDoc(e_hit['_id'], e_source['location'], e_source['length'], e_source['md5'],
+                    #                           e_source['mime'], e_source['lastmod'], e_source['res_set'], e_source['ln'])
+                    e_doc = ResourceDoc.as_resource_doc(e_source)
                     count += 1
                     # path = os.path.relpath(file, self.para.resource_dir)
                     # uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(path))
-                    uri = es_uri_from_location(loc=e_doc.location, para_url_prefix=self.para.url_prefix,
-                                               para_res_root_dir=self.para.res_root_dir)
+                    uri = e_doc.location.uri_from_path(para_url_prefix=self.para.url_prefix,
+                                                       para_res_root_dir=self.para.res_root_dir)
+                    ln=[]
                     if e_doc.ln:
                         for link in e_doc.ln:
                             # link_path = os.path.relpath(link['href'], self.para.resource_dir)
                             # link_uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(link_path))
-                            link_uri = es_uri_from_location(loc=link['href'], para_url_prefix=self.para.url_prefix,
-                                                            para_res_root_dir=self.para.res_root_dir)
+                            link_uri = link.href.uri_from_path(para_url_prefix=self.para.url_prefix,
+                                                                        para_res_root_dir=self.para.res_root_dir)
                             #link_uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(link['href']))
-                            link['href'] = link_uri
+                            ln.append({'href': link_uri,'rel': link.rel, 'mime': link.mime})
 
                     resource = Resource(uri=uri, length=e_doc.length,
-                                        lastmod=e_doc.time,
+                                        lastmod=e_doc.lastmod,
                                         md5=e_doc.md5,
                                         mime_type=e_doc.mime,
-                                        ln=e_doc.ln)
+                                        ln=ln)
                     yield count, resource
                     self.observers_inform(self, ExecutorEvent.created_resource, resource=resource,
                                           count=count)
@@ -157,14 +161,14 @@ class ElasticResourceListExecutor(Executor):
                         {"bool":
                             {"must": [
                                 {"term":
-                                     {"res_set": self.para.res_set}
+                                     {"resource_set": self.para.resource_set}
                                  }]
                             }
                         }
                     }
 
             return es_page_generator(es_get_instance(self.para.elastic_host, self.para.elastic_port),
-                                    self.para.elastic_index, self.para.elastic_resource_type, query,
+                                    self.para.elastic_index, self.para.elastic_resource_doc_type, query,
                                     self.para.max_items_in_list, MAX_RESULT_WINDOW)
 
         return generator
