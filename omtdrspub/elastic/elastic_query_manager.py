@@ -1,6 +1,9 @@
 from elasticsearch import Elasticsearch
+from rspub.util import defaults
 
+from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
 from omtdrspub.elastic.model.change_doc import ChangeDoc
+from omtdrspub.elastic.model.location import Location
 from omtdrspub.elastic.model.resource_doc import ResourceDoc
 
 
@@ -17,6 +20,62 @@ class ElasticQueryManager:
     @property
     def port(self):
         return self._port
+
+    def get_resource_by_location(self, index, doc_type, resource_set, location: Location):
+        query = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "term": {"resource_set": resource_set}
+                        },
+                        {
+                            "nested": {
+                                "path": "location",
+                                "query": {
+                                    "bool": {
+                                        "must": [
+                                            {"term":
+                                                 {"location.type": location.loc_type}
+                                             },
+                                            {"term":
+                                                {
+                                                    "location.value": location.value}
+                                            }
+                                        ]
+                                    }
+                                }
+
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+
+        result = self._instance.search(index=index, doc_type=doc_type, body=query)
+
+        return [ResourceDoc.as_resource_doc(hit['_source']) for hit in result['hits']['hits']]
+
+    def get_resource_by_resync_id(self, index, doc_type, resource_set, resync_id):
+        query = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "term": {"resource_set": resource_set}
+                        },
+                        {
+                            "term": {"resync_id": resync_id}
+                        }
+                    ]
+                }
+            }
+        }
+
+        result = self._instance.search(index=index, doc_type=doc_type, body=query)
+
+        return [ResourceDoc.as_resource_doc(hit['_source']) for hit in result['hits']['hits']]
 
     def es_instance(self) -> Elasticsearch:
         return Elasticsearch([{"host": self.host, "port": self.port}])
@@ -45,7 +104,6 @@ class ElasticQueryManager:
             }
         }
         self._instance.delete_by_query(index=index, doc_type=doc_type, body=query)
-        self.refresh_index(index=index)
 
     def refresh_index(self, index):
         return self._instance.indices.refresh(index=index)
@@ -87,3 +145,19 @@ class ElasticQueryManager:
                 c_iter = 0
                 yield bulk
                 bulk = []
+
+    # high level resource handling
+    def create_resource(self, params: ElasticRsParameters, resync_id, location, length, md5, mime, lastmod, ln):
+        resource_doc = ResourceDoc(resync_id=resync_id, resource_set=params.resource_set, location=location,
+                                   length=length, md5=md5, mime=mime, lastmod=lastmod, ln=ln)
+
+        change_doc = ChangeDoc(resource_set=params.resource_set,
+                               location=location, lastmod=lastmod, change='created', datetime=defaults.w3c_now())
+
+        index = params.elastic_index
+
+        self.index_resource(index=index, resource_doc_type=params.elastic_resource_doc_type,
+                            resource_doc=resource_doc)
+        self.index_change(index=index, change_doc_type=params.elastic_change_doc_type, change_doc=change_doc)
+
+

@@ -47,6 +47,7 @@ class ElasticResourceListExecutor(Executor):
             self.clear_metadata_dir()
 
     def generate_rs_documents(self, filenames: iter = None) -> [SitemapData]:
+        self.query_manager.refresh_index(self.para.elastic_index)
         # filenames is not necessary, we use it only to match the method signature
         sitemap_data_iter = []
         generator = self.resourcelist_generator()

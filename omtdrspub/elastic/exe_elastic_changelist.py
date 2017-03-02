@@ -246,6 +246,7 @@ class ElasticNewChangeListExecutor(ElasticChangeListExecutor):
     those previous changelists by setting their md:until value to now (start_of_processing)
     """
     def generate_rs_documents(self, filenames: iter=None):
+        self.query_manager.refresh_index(self.para.elastic_index)
         self.update_previous_state()
         if len(self.changelist_files) == 0:
             self.date_changelist_from = self.date_resourcelist_completed
@@ -279,6 +280,7 @@ class ElasticIncrementalChangeListExecutor(ElasticChangeListExecutor):
     (and is_saving_sitemaps).
     """
     def generate_rs_documents(self, filenames: iter=None):
+        self.query_manager.refresh_index(self.para.elastic_index)
         self.update_previous_state()
         self.date_changelist_from = self.date_resourcelist_completed
         changelist = None

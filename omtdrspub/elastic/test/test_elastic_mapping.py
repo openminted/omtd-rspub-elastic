@@ -8,6 +8,10 @@ def elastic_mapping(resource_type, change_type):
                     "store": "yes",
                 },
                 "properties": {
+                    "resync_id":{
+                        "type": "string",
+                        "index": "not_analyzed"
+                    },
                     "location": {
                         "type": "nested",
                         "properties": {

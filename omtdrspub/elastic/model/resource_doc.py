@@ -5,9 +5,10 @@ from omtdrspub.elastic.model.location import Location
 
 
 class ResourceDoc(object):
-    def __init__(self, resource_set=None,
+    def __init__(self, resync_id=None, resource_set=None,
                  location: Location=None, length: int=None, md5: str=None,
-                 mime: str=None, lastmod: str=None, ln: List[Link]=None):
+                 mime: str=None, lastmod: str=None, ln: List[Link]=[]):
+        self._resync_id = resync_id
         self._resource_set = resource_set
         self._location = location
         self._length = length
@@ -15,6 +16,10 @@ class ResourceDoc(object):
         self._mime = mime
         self._lastmod = lastmod
         self._ln = ln
+
+    @property
+    def resync_id(self):
+        return self._resync_id
 
     @property
     def resource_set(self):
@@ -54,21 +59,23 @@ class ResourceDoc(object):
 
     @staticmethod
     def as_resource_doc(dct):
-        return ResourceDoc(resource_set=dct['resource_set'],
+        return ResourceDoc(resync_id=dct['resync_id'],
+                           resource_set=dct['resource_set'],
                            location=Location.as_location(dct=dct['location']),
                            length=dct['length'],
                            md5=dct['md5'],
                            mime=dct['mime'],
                            lastmod=dct['lastmod'],
-                           ln=[Link.as_link(dct=link) for link in dct['ln']])
+                           ln=[] if dct['ln'] is None else [Link.as_link(dct=link) for link in dct['ln']])
 
     def to_dict(self):
         return {
+            'resync_id': self.resync_id,
             'resource_set': self.resource_set,
             'location': self.location.to_dict(),
             'length': self.length,
             'md5': self.md5,
             'mime': self.mime,
             'lastmod': self.lastmod,
-            'ln': [link.to_dict() for link in iter(self.ln)]
+            'ln': [link.to_dict() for link in self.ln]
         }
