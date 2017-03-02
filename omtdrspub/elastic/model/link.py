@@ -20,8 +20,16 @@ class Link(object):
     def mime(self):
         return self._mime
 
+    @mime.setter
+    def rel(self, rel):
+        self._rel = rel
+
+    @mime.setter
+    def mime(self, mime):
+        self._mime = mime
+
     @href.setter
-    def href(self, href):
+    def href(self, href: Location):
         self._href = href
 
     @staticmethod
@@ -29,6 +37,13 @@ class Link(object):
         return Link(href=Location.as_location(dct['href']),
                     rel=dct['rel'],
                     mime=dct['mime'])
+
+    def to_dict(self) -> dict:
+        return {
+            'href': self.href.to_dict(),
+            'rel': self.rel,
+            'mime': self.mime
+        }
 
 
 

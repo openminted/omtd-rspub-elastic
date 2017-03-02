@@ -13,15 +13,28 @@ from rspub.core.executors import Executor, SitemapData, ExecutorEvent
 from rspub.core.rs_enum import Capability
 from rspub.util import defaults
 
+from omtdrspub.elastic.elastic_query_manager import ElasticQueryManager
 from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
-from omtdrspub.elastic.elastic_utils import es_page_generator, es_get_instance, parse_xml_without_urls, \
-    es_delete_all_documents
+from omtdrspub.elastic.utils import parse_xml_without_urls
 from omtdrspub.elastic.model.change_doc import ChangeDoc
 
 MAX_RESULT_WINDOW = 10000
 
 
 class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
+
+    def __init__(self, rs_parameters: ElasticRsParameters=None):
+        Executor.__init__(self, rs_parameters)
+
+        # next parameters will all be set in the method update_previous_state
+        self.previous_changes = None
+        self.date_resourcelist_completed = None
+        self.date_changelist_from = None
+        self.resourcelist_files = []
+        self.changelist_files = []
+        ##
+
+        self.query_manager = ElasticQueryManager(self.para.elastic_host, self.para.elastic_port)
 
     def execute(self, filenames=None):
         # filenames is not necessary, we use it only to match the method signature
@@ -45,17 +58,6 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
 
     def generate_rs_documents(self, filenames: iter=None) -> [SitemapData]:
         pass
-
-    def __init__(self, rs_parameters: ElasticRsParameters=None):
-        Executor.__init__(self, rs_parameters)
-
-        # next parameters will all be set in the method update_previous_state
-        self.previous_changes = None
-        self.date_resourcelist_completed = None
-        self.date_changelist_from = None
-        self.resourcelist_files = []
-        self.changelist_files = []
-        ##
 
     def create_index(self, sitemap_data_iter: iter) -> SitemapData:
         changelist_index_path = self.para.abs_metadata_path("changelist-index.xml")
@@ -139,8 +141,9 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                                   deleted=num_deleted)
             all_changes = {"created": created, "updated": updated, "deleted": deleted}
 
-            es_delete_all_documents(es=es_get_instance(self.para.elastic_host, self.para.elastic_port),
-                                    index=self.para.elastic_index, doc_type=self.para.elastic_change_doc_type)
+            self.query_manager.delete_all_index_set_type_docs(index=self.para.elastic_index,
+                                                              doc_type=self.para.elastic_change_doc_type,
+                                                              resource_set=self.para.resource_set)
 
             ordinal = self.find_ordinal(Capability.changelist.name)
 
@@ -186,12 +189,8 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
             for e_page in elastic_page_generator():
                 for e_hit in e_page:
                     e_source = e_hit['_source']
-                    # e_doc = ElasticChangeDoc(e_hit['_id'], e_source['location'], e_source['lastmod'],
-                    #                          e_source['change'], e_source['res_set'])
                     e_doc = ChangeDoc.as_change_doc(e_source)
                     count += 1
-                    # path = os.path.relpath(file, self.para.resource_dir)
-                    #uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(e_doc.rel_path))
 
                     uri = e_doc.location.uri_from_path(para_url_prefix=self.para.url_prefix,
                                                        para_res_root_dir=self.para.res_root_dir)
@@ -229,9 +228,11 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                 ]
             }
 
-            return es_page_generator(es_get_instance(self.para.elastic_host, self.para.elastic_port),
-                                     self.para.elastic_index, self.para.elastic_change_doc_type, query,
-                                     self.para.max_items_in_list, MAX_RESULT_WINDOW)
+            return self.query_manager.scan_and_scroll(index=self.para.elastic_index,
+                                                      doc_type=self.para.elastic_change_doc_type,
+                                                      query=query,
+                                                      max_items_in_list=self.para.max_items_in_list,
+                                                      max_result_window=MAX_RESULT_WINDOW)
 
         return generator
 

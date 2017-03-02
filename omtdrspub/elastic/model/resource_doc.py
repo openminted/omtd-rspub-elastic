@@ -49,7 +49,7 @@ class ResourceDoc(object):
         self._ln = ln
 
     @location.setter
-    def location(self, location):
+    def location(self, location: Location):
         self._location = location
 
     @staticmethod
@@ -61,3 +61,14 @@ class ResourceDoc(object):
                            mime=dct['mime'],
                            lastmod=dct['lastmod'],
                            ln=[Link.as_link(dct=link) for link in dct['ln']])
+
+    def to_dict(self):
+        return {
+            'resource_set': self.resource_set,
+            'location': self.location.to_dict(),
+            'length': self.length,
+            'md5': self.md5,
+            'mime': self.mime,
+            'lastmod': self.lastmod,
+            'ln': [link.to_dict() for link in iter(self.ln)]
+        }

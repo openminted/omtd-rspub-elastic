@@ -38,3 +38,13 @@ class ChangeDoc(object):
                          lastmod=dct.get('lastmod'),
                          change=dct.get('change'),
                          datetime=dct.get('datetime'))
+
+    def to_dict(self):
+        return {
+            'resource_set': self.resource_set,
+            'change': self.change,
+            'location': self.location.to_dict(),
+            'lastmod': self.lastmod,
+            'datetime': self.datetime
+        }
+

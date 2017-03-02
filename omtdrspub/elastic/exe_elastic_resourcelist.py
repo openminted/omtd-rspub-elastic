@@ -8,8 +8,8 @@ from rspub.core.executors import Executor, SitemapData, ExecutorEvent
 from rspub.core.rs_enum import Capability
 from rspub.util import defaults
 
-from omtdrspub.elastic.elastic_utils import ElasticResourceDoc, es_page_generator, es_get_instance, es_uri_from_location
-from omtdrspub.elastic.model.location import Location
+from omtdrspub.elastic.elastic_query_manager import ElasticQueryManager
+from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
 from omtdrspub.elastic.model.resource_doc import ResourceDoc
 
 MAX_RESULT_WINDOW = 10000
@@ -18,8 +18,9 @@ LOG = logging.getLogger(__name__)
 
 
 class ElasticResourceListExecutor(Executor):
-    def __init__(self, rs_parameters):
+    def __init__(self, rs_parameters: ElasticRsParameters):
         super(ElasticResourceListExecutor, self).__init__(rs_parameters)
+        self.query_manager = ElasticQueryManager(self.para.elastic_host, self.para.elastic_port)
 
     def execute(self, filenames=None):
         # filenames is not necessary, we use it only to match the method signature
@@ -125,23 +126,16 @@ class ElasticResourceListExecutor(Executor):
             for e_page in elastic_page_generator():
                 for e_hit in e_page:
                     e_source = e_hit['_source']
-                    # e_doc = ElasticResourceDoc(e_hit['_id'], e_source['location'], e_source['length'], e_source['md5'],
-                    #                           e_source['mime'], e_source['lastmod'], e_source['res_set'], e_source['ln'])
                     e_doc = ResourceDoc.as_resource_doc(e_source)
                     count += 1
-                    # path = os.path.relpath(file, self.para.resource_dir)
-                    # uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(path))
                     uri = e_doc.location.uri_from_path(para_url_prefix=self.para.url_prefix,
                                                        para_res_root_dir=self.para.res_root_dir)
-                    ln=[]
+                    ln = []
                     if e_doc.ln:
                         for link in e_doc.ln:
-                            # link_path = os.path.relpath(link['href'], self.para.resource_dir)
-                            # link_uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(link_path))
                             link_uri = link.href.uri_from_path(para_url_prefix=self.para.url_prefix,
-                                                                        para_res_root_dir=self.para.res_root_dir)
-                            #link_uri = urljoin(self.para.url_prefix, defaults.sanitize_url_path(link['href']))
-                            ln.append({'href': link_uri,'rel': link.rel, 'mime': link.mime})
+                                                               para_res_root_dir=self.para.res_root_dir)
+                            ln.append({'href': link_uri, 'rel': link.rel, 'mime': link.mime})
 
                     resource = Resource(uri=uri, length=e_doc.length,
                                         lastmod=e_doc.lastmod,
@@ -167,8 +161,10 @@ class ElasticResourceListExecutor(Executor):
                         }
                     }
 
-            return es_page_generator(es_get_instance(self.para.elastic_host, self.para.elastic_port),
-                                    self.para.elastic_index, self.para.elastic_resource_doc_type, query,
-                                    self.para.max_items_in_list, MAX_RESULT_WINDOW)
+            return self.query_manager.scan_and_scroll(index=self.para.elastic_index,
+                                                      doc_type=self.para.elastic_resource_doc_type,
+                                                      query=query,
+                                                      max_items_in_list=self.para.max_items_in_list,
+                                                      max_result_window=MAX_RESULT_WINDOW)
 
         return generator

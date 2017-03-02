@@ -1,6 +1,7 @@
 from elasticsearch import Elasticsearch
 
-from omtdrspub.elastic.model.change_doc import ElasticChangeDoc
+from omtdrspub.elastic.model.change_doc import ChangeDoc
+from omtdrspub.elastic.model.resource_doc import ResourceDoc
 
 
 class ElasticQueryManager:
@@ -26,10 +27,10 @@ class ElasticQueryManager:
     def delete_index(self, index):
         return self._instance.indices.delete(index=index, ignore=404)
 
-    def index_resource(self, index, resource_doc_type, resource_doc):
-        return self._instance.index(index=index, doc_type=resource_doc_type, body=resource_doc)
+    def index_resource(self, index, resource_doc_type, resource_doc: ResourceDoc):
+        return self._instance.index(index=index, doc_type=resource_doc_type, body=resource_doc.to_dict())
 
-    def index_change(self, index, change_doc_type, change_doc: ElasticChangeDoc):
+    def index_change(self, index, change_doc_type, change_doc: ChangeDoc):
         return self._instance.index(index=index, doc_type=change_doc_type, body=change_doc.to_dict())
 
     def delete_all_index_set_type_docs(self, index, doc_type, resource_set):

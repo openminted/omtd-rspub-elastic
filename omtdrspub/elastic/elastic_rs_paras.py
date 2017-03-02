@@ -2,12 +2,12 @@ import os
 import urllib.parse
 
 import validators
+import yaml
 from rspub.core.rs_paras import RsParameters, WELL_KNOWN_URL
 from rspub.util import defaults
 
 
 class ElasticRsParameters(RsParameters):
-
     def __init__(self, **kwargs):
         super(ElasticRsParameters, self).__init__(**kwargs)
         self.resource_set = kwargs['resource_set']
@@ -67,7 +67,7 @@ class ElasticRsParameters(RsParameters):
         parts = urllib.parse.urlparse(value)
         if parts[0] not in ["http", "https"]:  # scheme
             raise ValueError("URL schemes allowed are 'http' or 'https'. Given: '%s'" % value)
-        is_valid_domain = validators.domain(parts.hostname)  #hostname
+        is_valid_domain = validators.domain(parts.hostname)  # hostname
 
         if parts.port is None:
             is_valid_port = True
@@ -90,6 +90,18 @@ class ElasticRsParameters(RsParameters):
             value += "/"
         self._url_prefix = value
 
+    @staticmethod
+    def from_yaml_params(config_file):
+
+        f = open(config_file, 'r+')
+        config = yaml.load(f)['executor']
+
+        if not os.path.exists(config['description_dir']):
+            os.makedirs(config['description_dir'])
+
+        rs_params = ElasticRsParameters(**config)
+        return rs_params
+
 
 def is_int(s):
     try:
@@ -97,7 +109,3 @@ def is_int(s):
         return True
     except ValueError:
         return False
-
-
-
-

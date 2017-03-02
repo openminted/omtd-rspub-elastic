@@ -6,8 +6,11 @@ from urllib.parse import urljoin
 from rspub.util import defaults
 
 from omtdrspub.elastic.elastic_generator import ElasticGenerator
-from omtdrspub.elastic.elastic_utils import es_delete_index, es_create_index, parse_yaml_params, es_put_resource, \
-    es_refresh_index, es_get_instance
+from omtdrspub.elastic.elastic_query_manager import ElasticQueryManager
+from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
+from omtdrspub.elastic.model.link import Link
+from omtdrspub.elastic.model.location import Location
+from omtdrspub.elastic.model.resource_doc import ResourceDoc
 from omtdrspub.elastic.test import test_elastic_mapping
 
 CONFIG_FILE = "resources/dit_elsevier_meta.yaml"
@@ -21,32 +24,46 @@ def compose_uri(path, res_dir, prefix):
 
 class TestElasticResourceList(unittest.TestCase):
 
-    config = parse_yaml_params(CONFIG_FILE)
-    es = None
+    config = ElasticRsParameters.from_yaml_params(CONFIG_FILE)
+    qm = None
 
     @classmethod
     def setUpClass(cls):
-        cls.es = es_get_instance(cls.config.elastic_host, cls.config.elastic_port)
-        es_delete_index(cls.es, index=cls.config.elastic_index)
-        es_create_index(cls.es, index=cls.config.elastic_index,
-                        mapping=test_elastic_mapping.elastic_mapping(cls.config.elastic_resource_doc_type,
-                                                                     cls.config.elastic_change_doc_type))
-        es_refresh_index(cls.es, index=cls.config.elastic_index)
+        cls.qm = ElasticQueryManager(cls.config.elastic_host, cls.config.elastic_port)
+        cls.qm.delete_index(index=cls.config.elastic_index)
+        cls.qm.create_index(index=cls.config.elastic_index,
+                            mapping=test_elastic_mapping.elastic_mapping(cls.config.elastic_resource_doc_type,
+                                                                         cls.config.elastic_change_doc_type))
+        cls.qm.refresh_index(index=cls.config.elastic_index)
 
-        es_put_resource(cls.es, cls.config.elastic_index, cls.config.elastic_resource_doc_type,
-                        "file1", {"type": "abs_path", "value": "/test/path/file1.txt"}, "elsevier",
-                              5, "md5", "text/plain", "2017-02-03T12:25:00Z",
-                              [{"href": {"value": "file1.pdf", "type": "rel_path"}, "rel": "describes", "mime": "application/pdf"}])
-        es_put_resource(cls.es, cls.config.elastic_index, cls.config.elastic_resource_doc_type,
-                        "file2", {"type": "abs_path", "value": "/test/path/file2.txt"}, "elsevier",
-                              6, "md5", "text/plain", "2017-02-03T12:27:00Z",
-                              [{"href": {"value": "file2.pdf", "type": "rel_path"}, "rel": "describes", "mime": "application/pdf"}])
+        res_doc1 = ResourceDoc(location=Location(loc_type="abs_path", value="/test/path/file1.txt"),
+                               resource_set="elsevier",
+                               length=5,
+                               md5="md5:",
+                               mime="text/plain",
+                               ln=[Link(href=Location(loc_type="rel_path", value="file1.pdf"), rel="describes",
+                                        mime="application/pdf")],
+                               lastmod="2017-02-03T12:25:00Z")
 
-        es_refresh_index(cls.es, index=cls.config.elastic_index)
+        res_doc2 = ResourceDoc(location=Location(loc_type="abs_path", value="/test/path/file2.txt"),
+                               resource_set="elsevier",
+                               length=5,
+                               md5="md5:",
+                               mime="text/plain",
+                               ln=[Link(href=Location(loc_type="rel_path", value="file2.pdf"), rel="describes",
+                                        mime="application/pdf")],
+                               lastmod="2017-02-03T12:27:00Z")
+
+        cls.qm.index_resource(index=cls.config.elastic_index, resource_doc_type=cls.config.elastic_resource_doc_type,
+                              resource_doc=res_doc1)
+        cls.qm.index_resource(index=cls.config.elastic_index, resource_doc_type=cls.config.elastic_resource_doc_type,
+                              resource_doc=res_doc2)
+
+        cls.qm.refresh_index(index=cls.config.elastic_index)
 
     @classmethod
     def tearDownClass(cls):
-        es_delete_index(cls.es, index=cls.config.elastic_index)
+        cls.qm.delete_index(index=cls.config.elastic_index)
         tmp_dir = cls.config.resource_dir
         shutil.rmtree(path=tmp_dir)
 

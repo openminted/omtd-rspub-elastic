@@ -6,7 +6,8 @@ from resync import ChangeList
 from resync import Resource
 from rspub.util import defaults
 
-from omtdrspub.elastic.elastic_utils import ElasticChangeDoc
+from omtdrspub.elastic.model.change_doc import ChangeDoc
+from omtdrspub.elastic.model.location import Location
 
 res_dir = "/test/path/"
 prefix = "http://example.com"
@@ -62,7 +63,7 @@ def get_changes_from_es_docs(docs):
 
     # new_resources
     for doc in docs:
-        change = Resource(uri=compose_uri(doc.location), change=doc.change, lastmod=doc.lastmod)
+        change = Resource(uri=compose_uri(doc.location.value), change=doc.change, lastmod=doc.lastmod)
         new_resources.append(change)
     return new_resources
 
@@ -94,8 +95,10 @@ class TestElasticResourceList(unittest.TestCase):
                                md_datetime="2017-02-01T05:00:00Z")
 
         #docs
-        doc1 = ElasticChangeDoc("change1", "/test/path/file1.txt", "2017-02-03T14:27:00Z", "deleted", "elsevier")
-        doc2 = ElasticChangeDoc("change2", "/test/path/file2.txt", "2017-02-03T14:27:00Z", "updated", "elsevier")
+        doc1 = ChangeDoc("change1", Location(value="/test/path/file1.txt", loc_type="abs_path"),
+                         "2017-02-03T14:27:00Z", "deleted", "elsevier")
+        doc2 = ChangeDoc("change2", Location(value="/test/path/file2.txt", loc_type="abs_path"),
+                         "2017-02-03T14:27:00Z", "updated", "elsevier")
 
         all_changes = changelist_pipeline([old_change1, old_change2], [doc1, doc2])
 
@@ -103,9 +106,9 @@ class TestElasticResourceList(unittest.TestCase):
 
     # def test_uneffective_changes(self):
     #     # docs
-    #     doc1 = ElasticChangeDoc("change1", "/test/path/file1.txt", "2017-02-03T14:27:00Z", "created", "elsevier")
-    #     doc2 = ElasticChangeDoc("change2", "/test/path/file1.txt", "2017-02-03T14:28:00Z", "updated", "elsevier")
-    #     doc3 = ElasticChangeDoc("change3", "/test/path/file1.txt", "2017-02-03T14:29:00Z", "deleted", "elsevier")
+    #     doc1 = ChangeDoc("change1", "/test/path/file1.txt", "2017-02-03T14:27:00Z", "created", "elsevier")
+    #     doc2 = ChangeDoc("change2", "/test/path/file1.txt", "2017-02-03T14:28:00Z", "updated", "elsevier")
+    #     doc3 = ChangeDoc("change3", "/test/path/file1.txt", "2017-02-03T14:29:00Z", "deleted", "elsevier")
     #
     #     all_changes = changelist_pipeline([], [doc1, doc2, doc3])
     #
@@ -114,8 +117,10 @@ class TestElasticResourceList(unittest.TestCase):
     def test_changes_without_old_resources(self):
 
         #docs
-        doc1 = ElasticChangeDoc("change1", "/test/path/file1.txt", "2017-02-03T14:27:00Z", "deleted", "elsevier")
-        doc2 = ElasticChangeDoc("change2", "/test/path/file2.txt", "2017-02-03T14:27:00Z", "updated", "elsevier")
+        doc1 = ChangeDoc("change1", Location(value="/test/path/file1.txt", loc_type="abs_path"),
+                         "2017-02-03T14:27:00Z", "deleted", "elsevier")
+        doc2 = ChangeDoc("change2", Location(value="/test/path/file2.txt", loc_type="abs_path"),
+                         "2017-02-03T14:27:00Z", "updated", "elsevier")
 
         new_changes = get_changes_from_es_docs([doc1, doc2])
         final_changes = merge_resource_changes(new_changes)
@@ -128,11 +133,16 @@ class TestElasticResourceList(unittest.TestCase):
     def test_merge_resource_new_changes(self):
 
         # docs
-        doc1 = ElasticChangeDoc("change1", "/test/path/file1.txt", "2017-02-03T14:27:00Z", "created", "elsevier")
-        doc2 = ElasticChangeDoc("change2", "/test/path/file1.txt", "2017-02-03T14:28:00Z", "updated", "elsevier")
-        doc3 = ElasticChangeDoc("change3", "/test/path/file1.txt", "2017-02-03T14:29:00Z", "deleted", "elsevier")
-        doc4 = ElasticChangeDoc("change4", "/test/path/file1.txt", "2017-02-03T14:30:00Z", "created", "elsevier")
-        doc5 = ElasticChangeDoc("change5", "/test/path/file1.txt", "2017-02-03T14:31:00Z", "updated", "elsevier")
+        doc1 = ChangeDoc("change1", Location(value="/test/path/file1.txt", loc_type="abs_path"),
+                         "2017-02-03T14:27:00Z", "created", "elsevier")
+        doc2 = ChangeDoc("change2", Location(value="/test/path/file1.txt", loc_type="abs_path"),
+                         "2017-02-03T14:28:00Z", "updated", "elsevier")
+        doc3 = ChangeDoc("change3", Location(value="/test/path/file1.txt", loc_type="abs_path"),
+                         "2017-02-03T14:29:00Z", "deleted", "elsevier")
+        doc4 = ChangeDoc("change4", Location(value="/test/path/file1.txt", loc_type="abs_path"),
+                         "2017-02-03T14:30:00Z", "created", "elsevier")
+        doc5 = ChangeDoc("change5", Location(value="/test/path/file1.txt", loc_type="abs_path"),
+                         "2017-02-03T14:31:00Z", "updated", "elsevier")
 
         all_changes = changelist_pipeline([], [doc1, doc2, doc3, doc4, doc5])
 
@@ -148,11 +158,16 @@ class TestElasticResourceList(unittest.TestCase):
                                md_datetime="2017-02-01T05:00:00Z")
 
         # new es changes
-        doc1 = ElasticChangeDoc("change1", "/test/path/file1.txt", "2017-02-03T14:27:00Z", "updated", "elsevier")
-        doc2 = ElasticChangeDoc("change2", "/test/path/file1.txt", "2017-02-03T14:28:00Z", "updated", "elsevier")
-        doc3 = ElasticChangeDoc("change3", "/test/path/file1.txt", "2017-02-03T14:29:00Z", "deleted", "elsevier")
-        doc4 = ElasticChangeDoc("change4", "/test/path/file1.txt", "2017-02-03T14:30:00Z", "created", "elsevier")
-        doc5 = ElasticChangeDoc("change5", "/test/path/file1.txt", "2017-02-03T14:31:00Z", "updated", "elsevier")
+        doc1 = ChangeDoc("change1", Location(value="/test/path/file1.txt", loc_type="abs_path"),
+                         "2017-02-03T14:27:00Z", "updated", "elsevier")
+        doc2 = ChangeDoc("change2", Location(value="/test/path/file1.txt", loc_type="abs_path"),
+                         "2017-02-03T14:28:00Z", "updated", "elsevier")
+        doc3 = ChangeDoc("change3", Location(value="/test/path/file1.txt", loc_type="abs_path"),
+                         "2017-02-03T14:29:00Z", "deleted", "elsevier")
+        doc4 = ChangeDoc("change4", Location(value="/test/path/file1.txt", loc_type="abs_path"),
+                         "2017-02-03T14:30:00Z", "created", "elsevier")
+        doc5 = ChangeDoc("change5", Location(value="/test/path/file1.txt", loc_type="abs_path"),
+                         "2017-02-03T14:31:00Z", "updated", "elsevier")
 
         all_changes = changelist_pipeline([old_change1, old_change2], [doc1, doc2, doc3, doc4, doc5])
 

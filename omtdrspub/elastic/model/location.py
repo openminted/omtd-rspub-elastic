@@ -40,3 +40,9 @@ class Location(object):
     @staticmethod
     def as_location(dct):
         return Location(value=dct['value'], loc_type=dct['type'])
+
+    def to_dict(self) -> dict:
+        return {
+            'type': self.loc_type,
+            'value': self.value
+        }
