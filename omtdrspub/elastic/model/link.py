@@ -20,7 +20,7 @@ class Link(object):
     def mime(self):
         return self._mime
 
-    @mime.setter
+    @rel.setter
     def rel(self, rel):
         self._rel = rel
 
