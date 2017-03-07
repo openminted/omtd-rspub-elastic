@@ -1,5 +1,3 @@
-from typing import List
-
 from omtdrspub.elastic.model.link import Link
 from omtdrspub.elastic.model.location import Location
 
@@ -7,7 +5,7 @@ from omtdrspub.elastic.model.location import Location
 class ResourceDoc(object):
     def __init__(self, resync_id=None, resource_set=None,
                  location: Location=None, length: int=None, md5: str=None,
-                 mime: str=None, lastmod: str=None, ln: List[Link]=[]):
+                 mime: str=None, lastmod: str=None, ln: [Link]=None):
         self._resync_id = resync_id
         self._resource_set = resource_set
         self._location = location
@@ -15,7 +13,7 @@ class ResourceDoc(object):
         self._md5 = md5
         self._mime = mime
         self._lastmod = lastmod
-        self._ln = ln
+        self._ln = ln if ln is not None else []
 
     @property
     def resync_id(self):
@@ -66,7 +64,7 @@ class ResourceDoc(object):
                            md5=dct['md5'],
                            mime=dct['mime'],
                            lastmod=dct['lastmod'],
-                           ln=[] if dct['ln'] is None else [Link.as_link(dct=link) for link in dct['ln']])
+                           ln=[Link.as_link(dct=link) for link in dct['ln']])
 
     def to_dict(self):
         return {

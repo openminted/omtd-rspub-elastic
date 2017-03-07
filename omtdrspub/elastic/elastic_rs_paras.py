@@ -17,6 +17,7 @@ class ElasticRsParameters(RsParameters):
         self.elastic_index = kwargs['elastic_index']
         self.elastic_resource_doc_type = kwargs['elastic_resource_doc_type']
         self.elastic_change_doc_type = kwargs['elastic_change_doc_type']
+        self.destination_dir = kwargs.get('destination_dir')
 
     # def abs_metadata_dir(self) -> str:
     #     """

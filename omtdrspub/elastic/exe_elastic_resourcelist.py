@@ -1,4 +1,5 @@
 import os
+from os.path import basename
 from urllib.parse import urljoin
 
 import logging
@@ -66,11 +67,11 @@ class ElasticResourceListExecutor(Executor):
             rel_index_path = os.path.relpath(index_path, self.para.resource_dir)
             index_url = urljoin(self.para.url_prefix, defaults.sanitize_url_path(rel_index_path))
             resourcelist_index.link_set(rel="up", href=self.para.capabilitylist_url())
-
             for sitemap_data in sitemap_data_iter:
                 resourcelist_index.add(Resource(uri=sitemap_data.uri, md_at=sitemap_data.doc_start,
                                                 md_completed=sitemap_data.doc_end))
                 if sitemap_data.document_saved:
+                    LOG.info("Updating document: " + basename(sitemap_data.path))
                     self.update_rel_index(index_url, sitemap_data.path)
 
             self.finish_sitemap(-1, resourcelist_index)
@@ -96,9 +97,9 @@ class ElasticResourceListExecutor(Executor):
                     ordinal += 1
                     doc_end = defaults.w3c_now()
                     resourcelist.md_completed = doc_end
-                    LOG.info("Generating resourcelist #:" + str(ordinal))
+                    LOG.info("Generating resourcelist #:" + str(ordinal) + "...")
                     sitemap_data = self.finish_sitemap(ordinal, resourcelist, doc_start=doc_start, doc_end=doc_end)
-                    LOG.info("Finish")
+                    LOG.info("Resource list # " + str(ordinal) + " successfully generated")
                     yield sitemap_data, resourcelist
                     resourcelist = None
 
@@ -113,7 +114,7 @@ class ElasticResourceListExecutor(Executor):
                 # ordinal = -1
                 # print("Generating resourcelist")
                 # else:
-                LOG.info("Generating resourcelist #:" + str(ordinal))
+                LOG.info("Generating resourcelist #:" + str(ordinal) + "...")
                 sitemap_data = self.finish_sitemap(ordinal, resourcelist, doc_start=doc_start, doc_end=doc_end)
                 LOG.info("Resource list # " + str(ordinal) + " successfully generated")
                 yield sitemap_data, resourcelist
