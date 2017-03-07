@@ -65,6 +65,10 @@ class DuplicateResourceException(TypeError):
     pass
 
 
+class ResourceNotFound(TypeError):
+    pass
+
+
 class ElasticQueryManager:
     def __init__(self, host: str, port: str):
         self._host = host
@@ -213,4 +217,49 @@ class ElasticQueryManager:
         if record_change:
             change_doc = ChangeDoc(resource_set=params.resource_set,
                                    location=location, lastmod=lastmod, change='created', datetime=defaults.w3c_now())
+            self.index_change(index=index, change_doc_type=params.elastic_change_doc_type, change_doc=change_doc)
+
+    def update_resource(self, params: ElasticRsParameters, resync_id, location, length, md5, mime, lastmod,
+                        ln=None, elastic_id=None, record_change=True):
+
+        index = params.elastic_index
+
+        resource = self.get_resource_by_location(index=index, doc_type=params.elastic_resource_doc_type,
+                                                 resource_set=params.resource_set, location=location)
+
+        if resource is None:
+            raise ResourceNotFound('Error: resource %s not found in set %s. (%s)'
+                                                 % (resync_id, params.resource_set, location.to_dict()))
+
+        self.delete_resource_by_location(index=index, resource_doc_type=params.elastic_resource_doc_type,
+                                         resource_set=params.resource_set, location=location)
+
+        resource_doc = ResourceDoc(resync_id=resync_id, resource_set=params.resource_set, location=location,
+                                   length=length, md5=md5, mime=mime, lastmod=lastmod, ln=ln)
+
+        self.index_resource(index=index, resource_doc_type=params.elastic_resource_doc_type,
+                            resource_doc=resource_doc, elastic_id=elastic_id, op_type='index')
+
+        if record_change:
+            change_doc = ChangeDoc(resource_set=params.resource_set,
+                                   location=location, lastmod=lastmod, change='update', datetime=defaults.w3c_now())
+            self.index_change(index=index, change_doc_type=params.elastic_change_doc_type, change_doc=change_doc)
+
+    def delete_resource(self, params: ElasticRsParameters, resync_id, location, elastic_id=None, record_change=True):
+
+        index = params.elastic_index
+
+        resource = self.get_resource_by_location(index=index, doc_type=params.elastic_resource_doc_type,
+                                                 resource_set=params.resource_set, location=location)
+
+        if resource is None:
+            raise ResourceNotFound('Error: resource %s not found in set %s. (%s)'
+                                   % (resync_id, params.resource_set, location.to_dict()))
+
+        self.delete_resource_by_location(index=index, resource_doc_type=params.elastic_resource_doc_type,
+                                         resource_set=params.resource_set, location=location)
+
+        if record_change:
+            change_doc = ChangeDoc(resource_set=params.resource_set,
+                                   location=location, change='delete', datetime=defaults.w3c_now())
             self.index_change(index=index, change_doc_type=params.elastic_change_doc_type, change_doc=change_doc)
