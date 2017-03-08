@@ -1,7 +1,6 @@
 import unittest
 
-from omtdrspub.elastic.elastic_query_manager import ElasticQueryManager, DuplicateResourceException, \
-    ResourceAlreadyExistsException
+from omtdrspub.elastic.elastic_query_manager import ElasticQueryManager
 from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
 from omtdrspub.elastic.model.location import Location
 from omtdrspub.elastic.model.resource_doc import ResourceDoc
@@ -39,10 +38,10 @@ class TestElasticQueryManager(unittest.TestCase):
                                md5="md5:",
                                mime="text/plain",
                                lastmod="2017-02-03T12:27:00Z", resync_id="2")
-        cls.qm.index_resource(index=cls.index, resource_doc_type=cls.resource_doc_type,
-                              resource_doc=res_doc1)
-        cls.qm.index_resource(index=cls.index, resource_doc_type=cls.resource_doc_type,
-                              resource_doc=res_doc2)
+        cls.qm.index_document(index=cls.index, doc_type=cls.resource_doc_type,
+                              doc=res_doc1.to_dict(), elastic_id=res_doc1.resync_id)
+        cls.qm.index_document(index=cls.index, doc_type=cls.resource_doc_type,
+                              doc=res_doc2.to_dict(), elastic_id=res_doc2.resync_id)
 
         cls.qm.refresh_index(index=cls.index)
 
@@ -51,43 +50,28 @@ class TestElasticQueryManager(unittest.TestCase):
         cls.qm.delete_index(index=cls.index)
 
     def test_resource_by_location(self):
-        result = self.qm.get_resource_by_location(index=self.index, resource_set='elsevier',
+        result = self.qm.get_document_by_location(index=self.index, resource_set='elsevier',
                                                   doc_type=self.resource_doc_type,
                                                   location=Location(loc_type="abs_path", value="/test/path/file1.txt"))
 
         self.assertTrue(result.location.value == "/test/path/file1.txt" and result.location.loc_type == "abs_path")
 
-    def test_resource_duplicates_detection(self):
-        res_doc1 = ResourceDoc(location=Location(loc_type="abs_path", value="/test/path/file1.txt"),
-                               resource_set="elsevier",
-                               length=5,
-                               md5="md5:",
-                               mime="text/plain",
-                               lastmod="2017-02-03T12:25:00Z", resync_id="1")
+    def test_resource_create_conflict(self):
+        result = self.qm.create_resource(params=self.config,
+                                         location=Location(loc_type="abs_path", value="/test/path/file1.txt"),
+                                         length=5,
+                                         md5="md5:",
+                                         mime="text/plain",
+                                         lastmod="2017-02-03T12:25:00Z", elastic_id="1", record_change=False)
+        self.assertTrue(result.get('error') is not None)
+        self.assertEqual(result.get('status'), 409)
 
-        new_id = self.qm.index_resource(index=self.index, resource_doc_type=self.resource_doc_type,
-                                        resource_doc=res_doc1)['_id']
-        self.qm.refresh_index(index=self.index)
-        self.assertRaises(DuplicateResourceException,
-                          self.qm.get_resource_by_resync_id, index=self.index,
-                          doc_type=self.resource_doc_type,
-                          resource_set=res_doc1.resource_set, resync_id="1"
-                          )
+    def test_resource_update(self):
+        result = self.qm.update_resource(params=self.config,
+                                         location=Location(loc_type="abs_path", value="/test/path/file1.txt"),
+                                         length=5,
+                                         md5="md5:",
+                                         mime="text/plain",
+                                         lastmod="2017-02-03T12:25:00Z", elastic_id="1", record_change=False)
 
-        self.assertRaises(DuplicateResourceException,
-                          self.qm.get_resource_by_location, index=self.index,
-                          doc_type=self.resource_doc_type,
-                          resource_set=res_doc1.resource_set,
-                          location=res_doc1.location
-                          )
-        self.qm.delete_document(index=self.index, doc_type=self.resource_doc_type, elastic_id=new_id)
-        self.qm.refresh_index(index=self.index)
-
-    def test_resource_duplicates_on_creation(self):
-
-        self.assertRaises(ResourceAlreadyExistsException, self.qm.create_resource, self.config,
-                          location=Location(loc_type="abs_path", value="/test/path/file1.txt"),
-                          length=5,
-                          md5="md5:",
-                          mime="text/plain",
-                          lastmod="2017-02-03T12:25:00Z", resync_id="1", record_change=False)
+        self.assertEqual(result.get('created'), False)

@@ -40,6 +40,19 @@ def location_query(resource_set, location: Location):
     }
 
 
+def resource_set_query(resource_set):
+    return {"query":
+        {"bool":
+            {"must": [
+                {"term":
+                     {"resource_set": resource_set}
+                 }
+            ]
+            }
+        }
+    }
+
+
 def resync_id_query(resource_set, resync_id):
     return {
         "query": {
@@ -84,34 +97,23 @@ class ElasticQueryManager:
         return self._port
 
     def resource_exists(self, index, doc_type, resource_set, location):
-        return False if self.get_resource_by_location(index=index, doc_type=doc_type,
+        return False if self.get_document_by_location(index=index, doc_type=doc_type,
                                                       resource_set=resource_set, location=location) is None else True
 
-    def get_resource_by_location(self, index, doc_type, resource_set, location: Location):
+    def get_document_by_location(self, index, doc_type, resource_set, location: Location):
         query = location_query(resource_set=resource_set, location=location)
         result = self._instance.search(index=index, doc_type=doc_type, body=query)
         hits = [ResourceDoc.as_resource_doc(hit['_source']) for hit in result['hits']['hits']]
         if len(hits) == 0:
             return None
         elif len(hits) > 1:
+            # this should not happen
             raise DuplicateResourceException('Error: more than one resource with location: %s' % location.to_dict())
         elif len(hits) == 1:
             return hits[0]
 
-    def get_resource_by_resync_id(self, index, doc_type, resource_set, resync_id):
-        query = resync_id_query(resource_set=resource_set, resync_id=resync_id)
-        result = self._instance.search(index=index, doc_type=doc_type, body=query)
-        hits = [ResourceDoc.as_resource_doc(hit['_source']) for hit in result['hits']['hits']]
-
-        if len(hits) == 0:
-            return None
-        elif len(hits) > 1:
-            raise DuplicateResourceException('Error: more than one resource with resync_id: %s' % resync_id)
-        elif len(hits) == 1:
-            return hits[0]
-
-    def get_resource_by_elastic_id(self, index, doc_type, elastic_id):
-        return self._instance.get(index=index, doc_type=doc_type, id=elastic_id).get('_source')
+    def get_document_by_elastic_id(self, index, doc_type, elastic_id):
+        return self._instance.get(index=index, doc_type=doc_type, id=elastic_id, ignore=404)
 
     def es_instance(self) -> Elasticsearch:
         return Elasticsearch([{"host": self.host, "port": self.port}], timeout=30, max_retries=10,
@@ -126,35 +128,16 @@ class ElasticQueryManager:
     def delete_document(self, index, doc_type, elastic_id):
         return self._instance.delete(index=index, doc_type=doc_type, id=elastic_id)
 
-    def index_resource(self, index, resource_doc_type, resource_doc: ResourceDoc, elastic_id=None, op_type='index'):
-        return self._instance.index(index=index, doc_type=resource_doc_type, body=resource_doc.to_dict(),
-                                    id=elastic_id, op_type=op_type)
+    def index_document(self, index, doc_type, doc, elastic_id=None, op_type='index'):
+        return self._instance.index(index=index, doc_type=doc_type, id=elastic_id, body=doc, op_type=op_type,
+                                    ignore=409)
 
-    def delete_resource_by_resync_id(self, index, resource_doc_type, resource_set, resync_id):
-        query = resync_id_query(resource_set=resource_set, resync_id=resync_id)
-        return self._instance.delete_by_query(index=index, doc_type=resource_doc_type, body=query)
-
-    def delete_resource_by_location(self, index, resource_doc_type, resource_set, location: Location):
+    def delete_document_by_location(self, index, resource_doc_type, resource_set, location: Location):
         query = location_query(resource_set=resource_set, location=location)
         return self._instance.delete_by_query(index=index, doc_type=resource_doc_type, body=query)
 
-    def index_change(self, index, change_doc_type, change_doc: ChangeDoc):
-        return self._instance.index(index=index, doc_type=change_doc_type, body=change_doc.to_dict())
-
-    def index_bulk(self, index, doc_type, body):
-        return self._instance.bulk(index=index, doc_type=doc_type, body=body, refresh=True)
-
     def delete_all_index_set_type_docs(self, index, doc_type, resource_set):
-        query = {"query":
-            {"bool":
-                {"must": [
-                    {"term":
-                         {"resource_set": resource_set}
-                     }
-                ]
-                }
-            }
-        }
+        query = resource_set_query(resource_set)
         self._instance.delete_by_query(index=index, doc_type=doc_type, body=query)
 
     def refresh_index(self, index):
@@ -199,67 +182,81 @@ class ElasticQueryManager:
                 bulk = []
 
     # high level resource handling
-    def create_resource(self, params: ElasticRsParameters, resync_id, location, length, md5, mime, lastmod,
-                        ln=None, elastic_id=None, record_change=True):
+    def create_or_update_resource(self, params: ElasticRsParameters, elastic_id, location, length, md5, mime, lastmod,
+                                  ln=None, record_change=True):
 
         index = params.elastic_index
 
-        if self.resource_exists(index=index, doc_type=params.elastic_resource_doc_type,
-                                resource_set=params.resource_set, location=location):
-            raise ResourceAlreadyExistsException('Error: resource %s already exists in set %s. (%s)'
-                                                 % (resync_id, params.resource_set, location.to_dict()))
-
-        resource_doc = ResourceDoc(resync_id=resync_id, resource_set=params.resource_set, location=location,
+        resource_doc = ResourceDoc(resync_id=elastic_id, resource_set=params.resource_set, location=location,
                                    length=length, md5=md5, mime=mime, lastmod=lastmod, ln=ln)
-        self.index_resource(index=index, resource_doc_type=params.elastic_resource_doc_type,
-                            resource_doc=resource_doc, elastic_id=elastic_id, op_type='create')
+        response: dict = self.index_document(index=index, doc_type=params.elastic_resource_doc_type,
+                                             doc=resource_doc.to_dict(), elastic_id=elastic_id, op_type='index')
 
-        if record_change:
+        if response.get('error') is None and record_change:
+            if response.get('created') is False:
+                change = 'created'
+            else:
+                change = 'updated'
+
+            change_doc = ChangeDoc(resource_set=params.resource_set,
+                                   location=location, lastmod=lastmod, change=change, datetime=defaults.w3c_now())
+            self.index_document(index=index, doc_type=params.elastic_change_doc_type, doc=change_doc.to_dict())
+
+        return response
+
+    def create_resource(self, params: ElasticRsParameters, elastic_id, location, length, md5, mime, lastmod,
+                        ln=None, record_change=True):
+
+        index = params.elastic_index
+
+        resource_doc = ResourceDoc(resync_id=elastic_id, resource_set=params.resource_set, location=location,
+                                   length=length, md5=md5, mime=mime, lastmod=lastmod, ln=ln)
+        response: dict = self.index_document(index=index, doc_type=params.elastic_resource_doc_type,
+                                             doc=resource_doc.to_dict(), elastic_id=elastic_id, op_type='create')
+
+        if response.get('error') is None and record_change:
             change_doc = ChangeDoc(resource_set=params.resource_set,
                                    location=location, lastmod=lastmod, change='created', datetime=defaults.w3c_now())
-            self.index_change(index=index, change_doc_type=params.elastic_change_doc_type, change_doc=change_doc)
+            self.index_document(index=index, doc_type=params.elastic_change_doc_type, doc=change_doc.to_dict())
 
-    def update_resource(self, params: ElasticRsParameters, resync_id, location, length, md5, mime, lastmod,
-                        ln=None, elastic_id=None, record_change=True):
+        return response
+
+    def update_resource(self, params: ElasticRsParameters, elastic_id, location, length, md5, mime, lastmod,
+                        ln=None, record_change=True):
 
         index = params.elastic_index
 
-        resource = self.get_resource_by_location(index=index, doc_type=params.elastic_resource_doc_type,
-                                                 resource_set=params.resource_set, location=location)
-
-        if resource is None:
-            raise ResourceNotFound('Error: resource %s not found in set %s. (%s)'
-                                                 % (resync_id, params.resource_set, location.to_dict()))
-
-        self.delete_resource_by_location(index=index, resource_doc_type=params.elastic_resource_doc_type,
-                                         resource_set=params.resource_set, location=location)
-
-        resource_doc = ResourceDoc(resync_id=resync_id, resource_set=params.resource_set, location=location,
+        resource_doc = ResourceDoc(resync_id=elastic_id, resource_set=params.resource_set, location=location,
                                    length=length, md5=md5, mime=mime, lastmod=lastmod, ln=ln)
+        response: dict = self.index_document(index=index, doc_type=params.elastic_resource_doc_type,
+                                             doc=resource_doc.to_dict(), elastic_id=elastic_id, op_type='index')
 
-        self.index_resource(index=index, resource_doc_type=params.elastic_resource_doc_type,
-                            resource_doc=resource_doc, elastic_id=elastic_id, op_type='index')
-
-        if record_change:
+        if response.get('error') is None and record_change:
             change_doc = ChangeDoc(resource_set=params.resource_set,
-                                   location=location, lastmod=lastmod, change='update', datetime=defaults.w3c_now())
-            self.index_change(index=index, change_doc_type=params.elastic_change_doc_type, change_doc=change_doc)
+                                   location=location, lastmod=lastmod, change='updated', datetime=defaults.w3c_now())
+            self.index_document(index=index, doc_type=params.elastic_change_doc_type, doc=change_doc.to_dict())
 
-    def delete_resource(self, params: ElasticRsParameters, resync_id, location, elastic_id=None, record_change=True):
+        return response
+
+    def delete_resource(self, params: ElasticRsParameters, elastic_id, location: Location, record_change=True):
 
         index = params.elastic_index
 
-        resource = self.get_resource_by_location(index=index, doc_type=params.elastic_resource_doc_type,
-                                                 resource_set=params.resource_set, location=location)
+        response: dict = self.delete_document(index=index, doc_type=params.elastic_resource_doc_type,
+                                              elastic_id=elastic_id)
 
-        if resource is None:
-            raise ResourceNotFound('Error: resource %s not found in set %s. (%s)'
-                                   % (resync_id, params.resource_set, location.to_dict()))
-
-        self.delete_resource_by_location(index=index, resource_doc_type=params.elastic_resource_doc_type,
-                                         resource_set=params.resource_set, location=location)
-
-        if record_change:
+        if response.get('error') is None and record_change:
             change_doc = ChangeDoc(resource_set=params.resource_set,
-                                   location=location, change='delete', datetime=defaults.w3c_now())
-            self.index_change(index=index, change_doc_type=params.elastic_change_doc_type, change_doc=change_doc)
+                                   location=location, change='deleted', datetime=defaults.w3c_now())
+            self.index_document(index=index, doc_type=params.elastic_change_doc_type, doc=change_doc.to_dict())
+
+        return response
+
+    def get_resource(self, params: ElasticRsParameters, elastic_id):
+
+        index = params.elastic_index
+
+        response: dict = self.get_document_by_elastic_id(index=index, doc_type=params.elastic_resource_doc_type,
+                                                         elastic_id=elastic_id)
+
+        return response

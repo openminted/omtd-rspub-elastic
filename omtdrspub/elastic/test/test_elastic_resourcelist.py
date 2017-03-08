@@ -25,7 +25,7 @@ def compose_uri(path, res_dir, prefix):
 class TestElasticResourceList(unittest.TestCase):
 
     config = ElasticRsParameters.from_yaml_params(CONFIG_FILE)
-    qm = None
+    qm: ElasticQueryManager = None
 
     @classmethod
     def setUpClass(cls):
@@ -37,7 +37,7 @@ class TestElasticResourceList(unittest.TestCase):
         cls.qm.refresh_index(index=cls.config.elastic_index)
 
         res_doc1 = ResourceDoc(location=Location(loc_type="abs_path", value="/test/path/file1.txt"),
-                               resource_set="elsevier",
+                               resource_set="elsevier-meta",
                                length=5,
                                md5="md5:",
                                mime="text/plain",
@@ -46,7 +46,7 @@ class TestElasticResourceList(unittest.TestCase):
                                lastmod="2017-02-03T12:25:00Z")
 
         res_doc2 = ResourceDoc(location=Location(loc_type="abs_path", value="/test/path/file2.txt"),
-                               resource_set="elsevier",
+                               resource_set="elsevier-meta",
                                length=5,
                                md5="md5:",
                                mime="text/plain",
@@ -54,10 +54,10 @@ class TestElasticResourceList(unittest.TestCase):
                                         mime="application/pdf")],
                                lastmod="2017-02-03T12:27:00Z")
 
-        cls.qm.index_resource(index=cls.config.elastic_index, resource_doc_type=cls.config.elastic_resource_doc_type,
-                              resource_doc=res_doc1)
-        cls.qm.index_resource(index=cls.config.elastic_index, resource_doc_type=cls.config.elastic_resource_doc_type,
-                              resource_doc=res_doc2)
+        cls.qm.index_document(index=cls.config.elastic_index, doc_type=cls.config.elastic_resource_doc_type,
+                              doc=res_doc1.to_dict())
+        cls.qm.index_document(index=cls.config.elastic_index, doc_type=cls.config.elastic_resource_doc_type,
+                              doc=res_doc2.to_dict())
 
         cls.qm.refresh_index(index=cls.config.elastic_index)
 

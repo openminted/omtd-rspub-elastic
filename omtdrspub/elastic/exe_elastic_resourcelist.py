@@ -31,6 +31,7 @@ class ElasticResourceListExecutor(Executor):
             os.makedirs(self.para.abs_metadata_dir())
 
         self.prepare_metadata_dir()
+        self.erase_changes()
         sitemap_data_iter = self.generate_rs_documents()
         self.post_process_documents(sitemap_data_iter)
         self.date_end_processing = defaults.w3c_now()
@@ -154,14 +155,14 @@ class ElasticResourceListExecutor(Executor):
 
         def generator() -> iter:
             query = {"query":
-                        {"bool":
-                            {"must": [
-                                {"term":
-                                     {"resource_set": self.para.resource_set}
-                                 }]
-                            }
-                        }
+                {"bool":
+                    {"must": [
+                        {"term":
+                             {"resource_set": self.para.resource_set}
+                         }]
                     }
+                }
+            }
 
             return self.query_manager.scan_and_scroll(index=self.para.elastic_index,
                                                       doc_type=self.para.elastic_resource_doc_type,
@@ -170,3 +171,8 @@ class ElasticResourceListExecutor(Executor):
                                                       max_result_window=MAX_RESULT_WINDOW)
 
         return generator
+
+    def erase_changes(self):
+        self.query_manager.delete_all_index_set_type_docs(index=self.para.elastic_index,
+                                                          doc_type=self.para.elastic_change_doc_type,
+                                                          resource_set=self.para.resource_set)

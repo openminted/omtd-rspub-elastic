@@ -45,6 +45,7 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
 
         self.prepare_metadata_dir()
         sitemap_data_iter = self.generate_rs_documents()
+        self.erase_changes()
         self.post_process_documents(sitemap_data_iter)
         self.date_end_processing = defaults.w3c_now()
         self.create_index(sitemap_data_iter)
@@ -141,10 +142,6 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                                   deleted=num_deleted)
             all_changes = {"created": created, "updated": updated, "deleted": deleted}
 
-            self.query_manager.delete_all_index_set_type_docs(index=self.para.elastic_index,
-                                                              doc_type=self.para.elastic_change_doc_type,
-                                                              resource_set=self.para.resource_set)
-
             ordinal = self.find_ordinal(Capability.changelist.name)
 
             resource_count = 0
@@ -235,6 +232,11 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                                                       max_result_window=MAX_RESULT_WINDOW)
 
         return generator
+
+    def erase_changes(self):
+        self.query_manager.delete_all_index_set_type_docs(index=self.para.elastic_index,
+                                                          doc_type=self.para.elastic_change_doc_type,
+                                                          resource_set=self.para.resource_set)
 
 
 class ElasticNewChangeListExecutor(ElasticChangeListExecutor):

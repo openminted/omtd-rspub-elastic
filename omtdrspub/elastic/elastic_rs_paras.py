@@ -1,5 +1,6 @@
 import os
 import urllib.parse
+from pathlib import Path
 
 import validators
 import yaml
@@ -17,7 +18,7 @@ class ElasticRsParameters(RsParameters):
         self.elastic_index = kwargs['elastic_index']
         self.elastic_resource_doc_type = kwargs['elastic_resource_doc_type']
         self.elastic_change_doc_type = kwargs['elastic_change_doc_type']
-        self.destination_dir = kwargs.get('destination_dir')
+        self.tmp_dir = kwargs.get('tmp_dir')
 
     # def abs_metadata_dir(self) -> str:
     #     """
@@ -36,6 +37,10 @@ class ElasticRsParameters(RsParameters):
     #         path = os.path.join(self.resource_dir, path)
     #
     #     self._metadata_dir = path
+
+    def abs_tmp_dir(self) -> str:
+        parent = str(Path(self.abs_metadata_dir()).parent)
+        return os.path.join(parent, self.tmp_dir)
 
     @property
     def url_prefix(self):
