@@ -126,7 +126,7 @@ class ElasticQueryManager:
         return self._instance.indices.delete(index=index, ignore=404)
 
     def delete_document(self, index, doc_type, elastic_id):
-        return self._instance.delete(index=index, doc_type=doc_type, id=elastic_id)
+        return self._instance.delete(index=index, doc_type=doc_type, id=elastic_id, ignore=404)
 
     def index_document(self, index, doc_type, doc, elastic_id=None, op_type='index'):
         return self._instance.index(index=index, doc_type=doc_type, id=elastic_id, body=doc, op_type=op_type,
