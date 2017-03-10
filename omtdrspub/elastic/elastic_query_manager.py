@@ -189,7 +189,7 @@ class ElasticQueryManager:
 
         resource_doc = ResourceDoc(resync_id=elastic_id, resource_set=params.resource_set, location=location,
                                    length=length, md5=md5, mime=mime, lastmod=lastmod, ln=ln)
-        response: dict = self.index_document(index=index, doc_type=params.elastic_resource_doc_type,
+        response = self.index_document(index=index, doc_type=params.elastic_resource_doc_type,
                                              doc=resource_doc.to_dict(), elastic_id=elastic_id, op_type='index')
 
         if response.get('error') is None and record_change:
@@ -211,7 +211,7 @@ class ElasticQueryManager:
 
         resource_doc = ResourceDoc(resync_id=elastic_id, resource_set=params.resource_set, location=location,
                                    length=length, md5=md5, mime=mime, lastmod=lastmod, ln=ln)
-        response: dict = self.index_document(index=index, doc_type=params.elastic_resource_doc_type,
+        response = self.index_document(index=index, doc_type=params.elastic_resource_doc_type,
                                              doc=resource_doc.to_dict(), elastic_id=elastic_id, op_type='create')
 
         if response.get('error') is None and record_change:
@@ -228,7 +228,7 @@ class ElasticQueryManager:
 
         resource_doc = ResourceDoc(resync_id=elastic_id, resource_set=params.resource_set, location=location,
                                    length=length, md5=md5, mime=mime, lastmod=lastmod, ln=ln)
-        response: dict = self.index_document(index=index, doc_type=params.elastic_resource_doc_type,
+        response = self.index_document(index=index, doc_type=params.elastic_resource_doc_type,
                                              doc=resource_doc.to_dict(), elastic_id=elastic_id, op_type='index')
 
         if response.get('error') is None and record_change:
@@ -242,7 +242,7 @@ class ElasticQueryManager:
 
         index = params.elastic_index
 
-        response: dict = self.delete_document(index=index, doc_type=params.elastic_resource_doc_type,
+        response = self.delete_document(index=index, doc_type=params.elastic_resource_doc_type,
                                               elastic_id=elastic_id)
 
         if response.get('error') is None and record_change:
@@ -256,7 +256,7 @@ class ElasticQueryManager:
 
         index = params.elastic_index
 
-        response: dict = self.get_document_by_elastic_id(index=index, doc_type=params.elastic_resource_doc_type,
+        response = self.get_document_by_elastic_id(index=index, doc_type=params.elastic_resource_doc_type,
                                                          elastic_id=elastic_id)
 
         return response
