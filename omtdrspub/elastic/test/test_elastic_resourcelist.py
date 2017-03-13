@@ -5,13 +5,13 @@ from urllib.parse import urljoin
 
 from rspub.util import defaults
 
+from omtdrspub.elastic import elastic_mapping
 from omtdrspub.elastic.elastic_generator import ElasticGenerator
 from omtdrspub.elastic.elastic_query_manager import ElasticQueryManager
 from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
 from omtdrspub.elastic.model.link import Link
 from omtdrspub.elastic.model.location import Location
 from omtdrspub.elastic.model.resource_doc import ResourceDoc
-from omtdrspub.elastic.test import test_elastic_mapping
 
 CONFIG_FILE = "resources/dit_elsevier_meta.yaml"
 
@@ -32,8 +32,8 @@ class TestElasticResourceList(unittest.TestCase):
         cls.qm = ElasticQueryManager(cls.config.elastic_host, cls.config.elastic_port)
         cls.qm.delete_index(index=cls.config.elastic_index)
         cls.qm.create_index(index=cls.config.elastic_index,
-                            mapping=test_elastic_mapping.elastic_mapping(cls.config.elastic_resource_doc_type,
-                                                                         cls.config.elastic_change_doc_type))
+                            mapping=elastic_mapping.elastic_mapping(cls.config.elastic_resource_doc_type,
+                                                                    cls.config.elastic_change_doc_type))
         cls.qm.refresh_index(index=cls.config.elastic_index)
 
         res_doc1 = ResourceDoc(location=Location(loc_type="abs_path", value="/test/path/file1.txt"),
