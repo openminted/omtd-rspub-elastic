@@ -31,7 +31,6 @@ class ElasticResourceListExecutor(Executor):
             os.makedirs(self.para.abs_metadata_dir())
 
         self.prepare_metadata_dir()
-        self.erase_changes()
         sitemap_data_iter = self.generate_rs_documents()
         self.post_process_documents(sitemap_data_iter)
         self.date_end_processing = defaults.w3c_now()
@@ -126,7 +125,13 @@ class ElasticResourceListExecutor(Executor):
 
         def generator(count=0) -> [int, Resource]:
             elastic_page_generator = self.elastic_page_generator()
+            erased_changes = False
             for e_page in elastic_page_generator():
+                if not erased_changes:
+                    # this will happen at the first scroll
+                    self.erase_changes()
+                    LOG.info("Changes erased")
+                    erased_changes = True
                 for e_hit in e_page:
                     e_source = e_hit['_source']
                     e_doc = ResourceDoc.as_resource_doc(e_source)

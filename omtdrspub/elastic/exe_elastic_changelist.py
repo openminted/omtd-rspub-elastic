@@ -5,6 +5,7 @@ import os
 from abc import ABCMeta
 from glob import glob
 
+import logging
 from resync import ChangeList
 from resync import Resource
 from resync import ResourceList
@@ -19,6 +20,8 @@ from omtdrspub.elastic.utils import parse_xml_without_urls
 from omtdrspub.elastic.model.change_doc import ChangeDoc
 
 MAX_RESULT_WINDOW = 10000
+
+LOG = logging.getLogger(__name__)
 
 
 class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
@@ -45,7 +48,6 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
 
         self.prepare_metadata_dir()
         sitemap_data_iter = self.generate_rs_documents()
-        self.erase_changes()
         self.post_process_documents(sitemap_data_iter)
         self.date_end_processing = defaults.w3c_now()
         self.create_index(sitemap_data_iter)
@@ -183,7 +185,13 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
 
         def generator(count=0) -> [int, Resource]:
             elastic_page_generator = self.elastic_page_generator()
+            erased_changes = False
             for e_page in elastic_page_generator():
+                if not erased_changes:
+                    # this will happen at the first scroll
+                    self.erase_changes()
+                    LOG.info("Erasing changes")
+                    erased_changes = True
                 for e_hit in e_page:
                     e_source = e_hit['_source']
                     e_doc = ChangeDoc.as_change_doc(e_source)
