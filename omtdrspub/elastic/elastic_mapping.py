@@ -34,7 +34,7 @@ def elastic_mapping(resource_type, change_type):
                     },
                     "lastmod": {
                         "type": "date",
-                        "format": "yyyyMMdd'T'HHmmssZ"
+                        "format": "yyyy-MM-dd\'T\'HH:mm:ssZ"
                     },
                     "resource_set": {
                         "type": "string",
@@ -66,11 +66,11 @@ def elastic_mapping(resource_type, change_type):
                                 "index": "not_analyzed"
                             }
                         }
+                    },
+                    "timestamp": {
+                        "type": "date",
+                        "format": "yyyy-MM-dd\'T\'HH:mm:ssZ"
                     }
-                },
-                "timestamp": {
-                    "type": "date",
-                    "format": "yyyyMMdd'T'HHmmssZ"
                 }
             },
             change_type: {
@@ -90,7 +90,7 @@ def elastic_mapping(resource_type, change_type):
                     },
                     "lastmod": {
                         "type": "date",
-                        "format": "yyyyMMdd'T'HHmmssZ"
+                        "format": "yyyy-MM-dd\'T\'HH:mm:ssZ"
                     },
                     "change": {
                         "type": "string",
@@ -100,10 +100,14 @@ def elastic_mapping(resource_type, change_type):
                         "type": "string",
                         "index": "not_analyzed"
                     },
+                    "datetime": {
+                        "type": "date",
+                        "format": "yyyy-MM-dd\'T\'HH:mm:ssZ"
+                    },
                     "timestamp": {
                         "type": "date",
-                        "format": "yyyyMMdd'T'HHmmssZ"
-                    },
+                        "format": "yyyy-MM-dd\'T\'HH:mm:ssZ"
+                    }
                 }
             }
         }
