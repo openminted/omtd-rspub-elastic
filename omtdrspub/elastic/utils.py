@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from resync.sitemap import RS_NS, SitemapParseError, SITEMAP_NS, SitemapIndexError
 
 from xml.etree.ElementTree import parse
@@ -92,6 +94,7 @@ def parse_xml_without_urls(sm, fh=None, etree=None, resources=None, capability=N
     return resources
 
 
-
+def formatted_date(d: datetime):
+    return d.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 

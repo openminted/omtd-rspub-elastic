@@ -1,6 +1,9 @@
+from datetime import datetime
+
 from elasticsearch import Elasticsearch
 from rspub.util import defaults
 
+from omtdrspub.elastic import utils
 from omtdrspub.elastic.elastic_rs_paras import ElasticRsParameters
 from omtdrspub.elastic.model.change_doc import ChangeDoc
 from omtdrspub.elastic.model.location import Location
@@ -21,12 +24,11 @@ def location_query(resource_set, location: Location):
                             "query": {
                                 "bool": {
                                     "must": [
-                                        {"term":
-                                             {"location.type": location.loc_type}
+                                        {
+                                            "term": {"location.type": location.loc_type}
                                          },
-                                        {"term":
-                                            {
-                                                "location.value": location.value}
+                                        {
+                                            "term": {"location.value": location.value}
                                         }
                                     ]
                                 }
@@ -41,13 +43,14 @@ def location_query(resource_set, location: Location):
 
 
 def resource_set_query(resource_set):
-    return {"query":
-        {"bool":
-            {"must": [
-                {"term":
-                     {"resource_set": resource_set}
-                 }
-            ]
+    return {
+        "query": {
+            "bool": {
+                "must": [
+                    {
+                        "term": {"resource_set": resource_set}
+                    }
+                ]
             }
         }
     }
@@ -189,7 +192,7 @@ class ElasticQueryManager:
 
         resource_doc = ResourceDoc(resync_id=elastic_id, resource_set=params.resource_set, location=location,
                                    length=length, md5=md5, mime=mime, lastmod=lastmod,
-                                   ln=ln, timestamp=defaults.w3c_now())
+                                   ln=ln, timestamp=utils.formatted_date(datetime.now()))
         response = self.index_document(index=index, doc_type=params.elastic_resource_doc_type,
                                        doc=resource_doc.to_dict(), elastic_id=elastic_id, op_type='index')
 
@@ -201,7 +204,8 @@ class ElasticQueryManager:
 
             change_doc = ChangeDoc(resource_set=params.resource_set,
                                    location=location, lastmod=lastmod, change=change,
-                                   datetime=defaults.w3c_now(), timestamp=defaults.w3c_now())
+                                   datetime=utils.formatted_date(datetime.now()),
+                                   timestamp=utils.formatted_date(datetime.now()))
             self.index_document(index=index, doc_type=params.elastic_change_doc_type, doc=change_doc.to_dict())
 
         return response
@@ -219,7 +223,8 @@ class ElasticQueryManager:
         if response.get('error') is None and record_change:
             change_doc = ChangeDoc(resource_set=params.resource_set,
                                    location=location, lastmod=lastmod, change='created',
-                                   datetime=defaults.w3c_now(), timestamp=defaults.w3c_now())
+                                   datetime=utils.formatted_date(datetime.now()),
+                                   timestamp=utils.formatted_date(datetime.now()))
             self.index_document(index=index, doc_type=params.elastic_change_doc_type, doc=change_doc.to_dict())
 
         return response
@@ -237,7 +242,8 @@ class ElasticQueryManager:
         if response.get('error') is None and record_change:
             change_doc = ChangeDoc(resource_set=params.resource_set,
                                    location=location, lastmod=lastmod, change='updated',
-                                   datetime=defaults.w3c_now(), timestamp=defaults.w3c_now())
+                                   datetime=utils.formatted_date(datetime.now()),
+                                   timestamp=utils.formatted_date(datetime.now()))
             self.index_document(index=index, doc_type=params.elastic_change_doc_type, doc=change_doc.to_dict())
 
         return response
@@ -252,7 +258,8 @@ class ElasticQueryManager:
         if response.get('error') is None and record_change:
             change_doc = ChangeDoc(resource_set=params.resource_set,
                                    location=location, change='deleted',
-                                   datetime=defaults.w3c_now(), timestamp=defaults.w3c_now())
+                                   datetime=utils.formatted_date(datetime.now()),
+                                   timestamp=utils.formatted_date(datetime.now()))
             self.index_document(index=index, doc_type=params.elastic_change_doc_type, doc=change_doc.to_dict())
 
         return response
