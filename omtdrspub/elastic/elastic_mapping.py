@@ -2,11 +2,6 @@ def elastic_mapping(resource_type, change_type):
     mapping = {
         "mappings": {
             resource_type: {
-                "_timestamp": {
-                    "enabled": "true",
-                    "format": "basic_date_time_no_millis",
-                    "store": "yes",
-                },
                 "properties": {
                     "resync_id":{
                         "type": "string",
@@ -22,7 +17,7 @@ def elastic_mapping(resource_type, change_type):
                             "type": {
                                 "type": "string",
                                 "index": "not_analyzed"
-                            },
+                            }
                         }
                     },
                     "length": {
@@ -39,6 +34,7 @@ def elastic_mapping(resource_type, change_type):
                     },
                     "lastmod": {
                         "type": "date",
+                        "format": "basic_date_time_no_millis"
                     },
                     "resource_set": {
                         "type": "string",
@@ -62,7 +58,7 @@ def elastic_mapping(resource_type, change_type):
                                     "type": {
                                         "type": "string",
                                         "index": "not_analyzed"
-                                    },
+                                    }
                                 }
                             },
                             "mime": {
@@ -71,14 +67,13 @@ def elastic_mapping(resource_type, change_type):
                             }
                         }
                     }
+                },
+                "timestamp": {
+                    "type": "date",
+                    "format": "basic_date_time_no_millis"
                 }
             },
             change_type: {
-                "_timestamp": {
-                    "enabled": "true",
-                    "format": "basic_date_time_no_millis",
-                    "store": "yes"
-                },
                 "properties": {
                     "location": {
                         "type": "nested",
@@ -90,11 +85,11 @@ def elastic_mapping(resource_type, change_type):
                             "type": {
                                 "type": "string",
                                 "index": "not_analyzed"
-                            },
+                            }
                         }
                     },
                     "lastmod": {
-                        "type": "date",
+                        "type": "date"
                     },
                     "change": {
                         "type": "string",
@@ -103,7 +98,11 @@ def elastic_mapping(resource_type, change_type):
                     "resource_set": {
                         "type": "string",
                         "index": "not_analyzed"
-                    }
+                    },
+                    "timestamp": {
+                        "type": "date",
+                        "format": "basic_date_time_no_millis"
+                    },
                 }
             }
         }

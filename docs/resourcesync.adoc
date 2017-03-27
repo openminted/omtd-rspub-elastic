@@ -37,7 +37,7 @@ ES type will be erased or marked as "fetched"
 will be “closed”, therefore a new ChangeList will be initialized. There is no
 indication for the appropriate time interval in the ResourceSync specification,
 so we will tune this parameter based on the metadata/pdfs download rate.
-More information about how metadata will be stored into Elasticsearch are available link:/protocol.md[here]. 
+More information about how metadata will be stored into Elasticsearch are available link:/docs/protocol.md[here].
 
 === Further improvements
 * Push protocol based on PubSubHubbub
