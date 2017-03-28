@@ -62,7 +62,7 @@ Here's the mapping for the resource type of the ‘omtd-resourcesync’ index:
       },
       "lastmod": {
         "type": "date",
-        "format": "basic_date_time_no_millis"
+        "format": "yyyy-MM-dd'T'HH:mm:ssZ"
       },
       "ln": {
         "type": "nested",
@@ -90,6 +90,10 @@ Here's the mapping for the resource type of the ‘omtd-resourcesync’ index:
             "index": "not_analyzed"
           }
         }
+      },
+      "timestamp": {
+        "type": "date",
+        "format": "yyyy-MM-dd'T'HH:mm:ssZ"
       }
     }
   }
@@ -143,11 +147,15 @@ Here's the mapping for the change type:
       },
       "lastmod": {
         "type": "date",
-        "format": "basic_date_time_no_millis"
+        "format": "yyyy-MM-dd'T'HH:mm:ssZ"
       },
       "datetime": {
         "type": "date",
-        "format": "basic_date_time_no_millis"
+        "format": "yyyy-MM-dd'T'HH:mm:ssZ"
+      },
+      "timestamp": {
+        "type": "date",
+        "format": "yyyy-MM-dd'T'HH:mm:ssZ"
       }
     }
   }

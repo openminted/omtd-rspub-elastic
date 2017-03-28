@@ -25,6 +25,7 @@ required by the rspub-core [```RsParameters```](https://github.com/EHRI/rspub-co
 to properly configure and query an Elasticsearch instance for the ResourceSync framework. Here is an example of configuration file:
 
 ```
+resource_set: capabilityname
 resource_dir: tmp/dit 
 metadata_dir: resourcesync/capabilityname
 res_root_dir: tmp/dit
@@ -40,7 +41,6 @@ elastic_port: 9200
 elastic_index: test-resourcesync
 elastic_resource_type: resource
 elastic_change_type: change
-res_set: capabilityname
 ```
 
 _TODO: provide explaination for each parameter_ 
@@ -48,7 +48,7 @@ _TODO: provide explaination for each parameter_
 Three executors are provided:
 * ```generate_resourcelist```: generates a resourcelist based on the documents stored at the specified ```elastic_resource_type```
 * ```generate_new_changelist```: generates a new changelist based on the documents stored at the specified  ```elastic_change_type```
-* ```generate_inc_changelist```: updates a previously generated changelist with the changes occurred since the ```change_since``` datetime
+* ```generate_inc_changelist```: updates a previously generated changelist
 
 Each executor will generate ResourceSync-compliant documents for the capability list specified in the configuration.
 
