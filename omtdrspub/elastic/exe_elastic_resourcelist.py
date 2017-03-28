@@ -5,6 +5,7 @@ from urllib.parse import urljoin
 import logging
 from resync import Resource
 from resync import ResourceList
+from resync.list_base_with_index import ListBaseWithIndex
 from rspub.core.executors import Executor, SitemapData, ExecutorEvent
 from rspub.core.rs_enum import Capability
 from rspub.util import defaults
@@ -75,6 +76,25 @@ class ElasticResourceListExecutor(Executor):
                     self.update_rel_index(index_url, sitemap_data.path)
 
             self.finish_sitemap(-1, resourcelist_index)
+
+    def save_sitemap(self, sitemap, path):
+        sitemap.pretty_xml = self.para.is_saving_pretty_xml
+        # writing the string sitemap.as_xml() to disk results in encoding=ASCII on some systems.
+        # due to https://docs.python.org/3.4/library/xml.etree.elementtree.html#write
+        sitemap.write(path)
+        if sitemap.sitemapindex:
+            self.write_index(sitemap, path)
+        else:
+            sitemap.write(path)
+
+    @staticmethod
+    def write_index(sitemap: ListBaseWithIndex, path):
+        """Return XML serialization of this list taken to be sitemapindex entries
+
+        """
+        sitemap.default_capability()
+        s = sitemap.new_sitemap()
+        return s.resources_as_xml(sitemap, sitemapindex=True, fh=path)
 
     def resourcelist_generator(self) -> iter:
 
@@ -159,12 +179,14 @@ class ElasticResourceListExecutor(Executor):
     def elastic_page_generator(self) -> iter:
 
         def generator() -> iter:
-            query = {"query":
-                {"bool":
-                    {"must": [
-                        {"term":
-                             {"resource_set": self.para.resource_set}
-                         }]
+            query = {
+                "query": {
+                    "bool": {
+                        "must": [
+                            {
+                                "term": {"resource_set": self.para.resource_set}
+                            }
+                        ]
                     }
                 }
             }

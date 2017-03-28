@@ -9,6 +9,7 @@ import logging
 from resync import ChangeList
 from resync import Resource
 from resync import ResourceList
+from resync.list_base_with_index import ListBaseWithIndex
 from resync.sitemap import Sitemap
 from rspub.core.executors import Executor, SitemapData, ExecutorEvent
 from rspub.core.rs_enum import Capability
@@ -86,6 +87,25 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
                         self.save_sitemap(changelist, cl_file)
 
             self.finish_sitemap(-1, changelist_index)
+
+    def save_sitemap(self, sitemap, path):
+        sitemap.pretty_xml = self.para.is_saving_pretty_xml
+        # writing the string sitemap.as_xml() to disk results in encoding=ASCII on some systems.
+        # due to https://docs.python.org/3.4/library/xml.etree.elementtree.html#write
+        sitemap.write(path)
+        if sitemap.sitemapindex:
+            self.write_index(sitemap, path)
+        else:
+            sitemap.write(path)
+
+    @staticmethod
+    def write_index(sitemap: ListBaseWithIndex, path):
+        """Return XML serialization of this list taken to be sitemapindex entries
+
+        """
+        sitemap.default_capability()
+        s = sitemap.new_sitemap()
+        return s.resources_as_xml(sitemap, sitemapindex=True, fh=path)
 
     def update_previous_state(self):
         if self.previous_changes is None:
@@ -210,8 +230,6 @@ class ElasticChangeListExecutor(Executor, metaclass=ABCMeta):
         return generator
 
     def elastic_page_generator(self) -> iter:
-        #changes_since = self.para.changes_since if hasattr(self.para, 'changes_since') \
-        #    else self.date_resourcelist_completed
 
         def generator() -> iter:
             query = {
