@@ -81,7 +81,7 @@ class ElasticResourceListExecutor(Executor):
         sitemap.pretty_xml = self.para.is_saving_pretty_xml
         # writing the string sitemap.as_xml() to disk results in encoding=ASCII on some systems.
         # due to https://docs.python.org/3.4/library/xml.etree.elementtree.html#write
-        sitemap.write(path)
+        #sitemap.write(path)
         if sitemap.sitemapindex:
             self.write_index(sitemap, path)
         else:
