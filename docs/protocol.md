@@ -22,8 +22,8 @@ generate a resource list from it. Likewise, change lists can be created and upda
 a time interval to retrieve the changes we are interested in. In this way, the ResourceSync source will not have any
 interaction with the file system and will just refer to the Elasticsearch index as reference for the resources' state.
 
-# Elasticsearch mappings
-## *resource* type
+## Elasticsearch mappings
+### *resource* type
 
 Here's the mapping for the resource type of the ‘omtd-resourcesync’ index:
 
@@ -117,7 +117,7 @@ For each resource, the following fields will be filled out:
     - href: link to the resource, similar to "location" (uri/abs_path/rel_path)
     - mime: mime type of the linked resource
 
-## *change* type
+### *change* type
 
 Here's the mapping for the change type:
 ```json
