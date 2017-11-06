@@ -1,6 +1,8 @@
 omtd-rspub-elastic
 ======================================
 
+**NOTE: this project has been integrated into the [py-resourcesync](https://github.com/resourcesync/py-resourcesync) library.**
+
 An extension for the rspub-core library supporting Elasticsearch storage.
 
 Proposal and documentation available [here](docs/).
