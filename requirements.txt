@@ -9,5 +9,5 @@ requests==2.13.0
 -e git+https://github.com/EHRI/resync.git@ehribranch#egg=resync
 -e git+https://github.com/EHRI/rspub-core.git@master#egg=rspub-core
 six==1.10.0
-urllib3==1.20
+urllib3==1.26.5
 validators==0.11.2
